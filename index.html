@@ -1499,7 +1499,7 @@ window.showAppShell = function() {
    to a separate AI backend, which verifies the user and calls Gemini.
    Set CHSL_AI_API_URL after deploying the companion Worker.
    ========================================================================== */
-window.CHSL_AI_API_URL = window.CHSL_AI_API_URL || '';
+window.CHSL_AI_API_URL = 'https://ssc.dakshm31007.workers.dev/generate-test';
 
 function aiStatus(message, kind='info') {
   const el = document.getElementById('ai-status');
