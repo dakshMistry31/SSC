@@ -580,57 +580,85 @@
         
         function randInt(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
 
+        const QUESTION_BANK = {
+            maths: {
+                'Percentage': () => { const total=randInt(4,20)*50, pct=randInt(5,40); const ans=total*pct/100; return [`${pct}% of ₹${total} is:`, [`₹${ans}`,`₹${ans+10}`,`₹${ans-10}`,`₹${ans+20}`],0,`${pct}% of ${total} = ${total} × ${pct}/100 = ${ans}.`]; },
+                'Profit & Loss': () => { const cp=randInt(10,50)*100, p=randInt(5,25); const ans=cp*(100+p)/100; return [`An article costs ₹${cp}. If it is sold at ${p}% profit, what is its selling price?`,[`₹${ans}`,`₹${ans+50}`,`₹${ans-50}`,`₹${ans+100}`],0,`Selling price = Cost Price × (100 + Profit%)/100 = ₹${ans}.`]; },
+                'Discount': () => { const mp=randInt(10,50)*100, d=randInt(5,30); const ans=mp*(100-d)/100; return [`An article marked ₹${mp} is sold at ${d}% discount. Find the selling price.`,[`₹${ans}`,`₹${ans+50}`,`₹${ans-50}`,`₹${ans+100}`],0,`Selling price = Marked Price × (100 − Discount%)/100 = ₹${ans}.`]; },
+                'Average': () => { const n=randInt(4,8), avg=randInt(10,40), ans=n*avg; return [`The average of ${n} numbers is ${avg}. What is their sum?`,[`${ans}`,`${ans+avg}`,`${ans-avg}`,`${ans+10}`],0,`Sum = Average × Number of observations = ${avg} × ${n} = ${ans}.`]; },
+                'Ratio & Proportion': () => { const a=randInt(2,8), b=randInt(2,8), k=randInt(3,9), ans=b*k; return [`If two quantities are in the ratio ${a}:${b} and the first quantity is ${a*k}, the second is:`,[`${ans}`,`${ans+a}`,`${ans-b}`,`${ans+2}`],0,`Scale factor = ${k}; second quantity = ${b} × ${k} = ${ans}.`]; },
+                'Simple Interest': () => { const p=randInt(5,20)*1000,r=randInt(4,12),t=randInt(2,5),ans=p*r*t/100; return [`Find the simple interest on ₹${p} at ${r}% per annum for ${t} years.`,[`₹${ans}`,`₹${ans+500}`,`₹${ans-500}`,`₹${ans+1000}`],0,`SI = PRT/100 = ${p} × ${r} × ${t}/100 = ₹${ans}.`]; },
+                'Interest (Simple & Compound)': () => { const p=randInt(5,20)*1000,r=10,t=2,ans=p*(1.1**2-1); return [`At ${r}% compound interest per annum, the interest on ₹${p} for ${t} years is:`,[`₹${ans}`,`₹${ans+1000}`,`₹${ans-1000}`,`₹${ans+500}`],0,`Amount = P(1+r/100)^t = ${p}(1.1)^2; compound interest = ₹${ans}.`]; },
+                'Number Systems': () => { const n=randInt(10,90), ans=n%9; return [`What is the remainder when ${n} is divided by 9?`,[`${ans}`,`${(ans+1)%9}`,`${(ans+3)%9}`,`${(ans+5)%9}`],0,`${n} = 9 × ${Math.floor(n/9)} + ${ans}, so the remainder is ${ans}.`]; },
+                'Fundamental Arithmetical Operations': () => { const a=randInt(10,40),b=randInt(5,20),c=randInt(2,8),ans=a+b*c; return [`Evaluate: ${a} + ${b} × ${c}`, [`${ans}`,`${ans+b}`,`${ans-c}`,`${ans+10}`],0,`Multiplication is performed first: ${b} × ${c} = ${b*c}; then ${a} + ${b*c} = ${ans}.`]; },
+                'Time & Distance': () => { const v=randInt(4,12)*5,t=randInt(2,6),ans=v*t; return [`A vehicle travels at ${v} km/h for ${t} hours. How far does it travel?`,[`${ans} km`,`${ans+10} km`,`${ans-10} km`,`${ans+5} km`],0,`Distance = Speed × Time = ${v} × ${t} = ${ans} km.`]; },
+                'Time & Work': () => { const days=randInt(4,12), ans=days/2; return [`A person can complete a job in ${days} days. Assuming another person has the same efficiency, together they complete it in:`,[`${ans} days`,`${days-1} days`,`${days+2} days`,`${days/3} days`],0,`Two identical workers double the work rate, so time becomes ${days}/2 = ${ans} days.`]; },
+                'Square Roots': () => { const x=randInt(5,30),n=x*x; return [`What is the square root of ${n}?`,[`${x}`,`${x+1}`,`${x-1}`,`${x+2}`],0,`Since ${x} × ${x} = ${n}, √${n} = ${x}.`]; },
+                'Averages': () => { const a=randInt(10,30),b=randInt(10,30),ans=(a+b)/2; return [`Find the average of ${a} and ${b}.`,[`${ans}`,`${ans+2}`,`${ans-2}`,`${ans+5}`],0,`Average = (${a}+${b})/2 = ${ans}.`]; }
+            },
+            reasoning: {
+                'Number Series': () => { const a=randInt(2,12),d=randInt(2,9), vals=[a,a+d,a+2*d,a+3*d],ans=a+4*d; return [`Find the next number: ${vals.join(', ')}, ?`,[`${ans}`,`${ans+d}`,`${ans- d}`,`${ans+2}`],0,`The series increases by ${d} each time, so the next number is ${ans}.`]; },
+                'Semantic Analogy': () => { const pairs=[['Bird','Nest','Lion','Den'],['Doctor','Hospital','Teacher','School'],['Book','Read','Food','Eat'],['Fish','Water','Bird','Air']]; const x=pairs[randInt(0,pairs.length-1)]; return [`${x[0]} : ${x[1]} :: ${x[2]} : ?`,[x[3],'Road','House','Office'],0,`${x[0]} is associated with ${x[1]} in the same way that ${x[2]} is associated with ${x[3]}.`]; },
+                'Coding & De-coding': () => { const letters=['CAT','DOG','PEN','SUN']; const w=letters[randInt(0,3)], code=w.split('').map(ch=>ch.charCodeAt(0)-64).join('-'); return [`If the letters of a word are represented by their alphabet positions, how is ${w} coded?`,[code,code.replace(/-/g,'+'),`${code}-1`,`${code}+1`],0,`Alphabet positions are used: ${w.split('').join(' = ')} → ${code}.`]; },
+                'Venn Diagrams': () => { const total=60,a=35,b=30,both=10,neither=total-(a+b-both); return [`In a group of ${total}, ${a} like A, ${b} like B and ${both} like both. How many like neither?`,[`${neither}`,`${neither+5}`,`${neither-5}`,`${both}`],0,`At least one = ${a}+${b}−${both} = ${a+b-both}; neither = ${total}−${a+b-both} = ${neither}.`]; },
+                'Symbolic Operations': () => { const a=randInt(3,9),b=randInt(2,7),c=randInt(2,5),ans=a+b*c; return [`If ★ means + and ◆ means ×, find ${a} ★ ${b} ◆ ${c}.`,[`${ans}`,`${a+b+c}`,`${(a+b)*c}`,`${a*b+c}`],0,`Replace symbols: ${a} + ${b} × ${c} = ${ans}.`]; }
+            },
+            english: {
+                'Vocabulary': () => { const items=[['ABUNDANT','Plentiful'],['CANDID','Frank'],['FRUGAL','Economical'],['VITAL','Essential'],['BRIEF','Concise'],['HOSTILE','Unfriendly']]; const [w,s]=items[randInt(0,items.length-1)]; return [`Choose the most appropriate synonym of “${w}”.`,[s,'Rigid','Obscure','Scarce'],0,`“${w}” is closest in meaning to “${s}”.`]; },
+                'Synonyms & Antonyms': () => { const items=[['ANCIENT','Modern'],['EXPAND','Contract'],['OPTIMISTIC','Pessimistic'],['GENUINE','Fake'],['SCARCE','Abundant']]; const [w,a]=items[randInt(0,items.length-1)]; return [`Choose the most appropriate antonym of “${w}”.`,[a,'Brief','Candid','Rigid'],0,`The opposite of “${w}” is “${a}”.`]; },
+                'Grammar': () => { const qs=[['She ___ to school every day.',['go','goes','going','gone'],1,'With “She” in the simple present, the verb takes -s: “goes”.'],['They ___ playing cricket now.',['is','are','was','be'],1,'“They” takes the plural auxiliary “are”.'],['He has ___ his work.',['finish','finished','finishing','finishes'],1,'After “has”, the past participle “finished” is used.']]; return qs[randInt(0,qs.length-1)]; },
+                'Spot the Error': () => { const qs=[['Identify the incorrect part: “He do not like coffee.”',['He','do','not like','coffee'],1,'The singular subject “He” requires “does”, not “do”.'],['Identify the incorrect part: “She are very happy.”',['She','are','very','happy'],1,'“She” requires the singular verb “is”.']]; return qs[randInt(0,qs.length-1)]; },
+                'Fill in the Blanks': () => { const qs=[['The train arrived ___ time.',['at','on','in','by'],1,'The standard expression is “on time”.'],['He is good ___ mathematics.',['in','at','on','for'],1,'The correct collocation is “good at”.']]; return qs[randInt(0,qs.length-1)]; },
+                'Idioms & Phrases': () => { const qs=[['“A blessing in disguise” means:', ['A hidden benefit','A serious loss','A public celebration','A direct warning'],0,'It refers to something that seems bad at first but turns out to be beneficial.'],['“Once in a blue moon” means:', ['Very rarely','Every day','Immediately','Never'],0,'It means something happens very rarely.']]; return qs[randInt(0,qs.length-1)]; }
+            },
+            computer: {
+                'Computer Basics': () => [`Which component is primarily responsible for processing instructions?`,['CPU','Monitor','Keyboard','Printer'],0,'The CPU executes instructions and performs processing.'],
+                'CPU & Input/Output Devices': () => [`Which of the following is an input device?`,['Keyboard','Monitor','Speaker','Projector'],0,'A keyboard sends data and commands into the computer.'],
+                'Memory Organization': () => [`Which memory is volatile?`,['RAM','ROM','DVD','Hard disk'],0,'RAM is volatile and loses its contents when power is removed.'],
+                'Windows OS': () => [`Which key combination commonly opens the Windows security/options screen?`,['Ctrl + Alt + Delete','Ctrl + V','Alt + F4','Ctrl + P'],0,'Ctrl + Alt + Delete opens the Windows security/options screen.'],
+                'MS Word': () => [`Which shortcut is used to paste copied text in MS Word?`,['Ctrl + V','Ctrl + C','Ctrl + X','Ctrl + P'],0,'Ctrl + V pastes clipboard content.'],
+                'MS Excel': () => [`In Excel, formulas normally begin with which symbol?`,['=','#','@','&'],0,'Excel formulas conventionally begin with the equals sign (=).'],
+                'Internet & E-mail': () => [`Which protocol is commonly used to transfer web pages securely?`,['HTTPS','FTP','SMTP','POP3'],0,'HTTPS is HTTP over TLS/SSL and is used for secure web communication.'],
+                'Cyber Security & Viruses': () => [`Which practice best helps protect an account from password theft?`,['Use a unique strong password and MFA','Share the password with friends','Use the same password everywhere','Disable security updates'],0,'Unique passwords and multi-factor authentication substantially improve account security.']
+            },
+            ga: {
+                'General Polity': () => [`Fundamental Duties were added to the Indian Constitution by which Amendment?`,['42nd Amendment','44th Amendment','73rd Amendment','86th Amendment'],0,'The 42nd Constitutional Amendment Act, 1976 added Fundamental Duties.'],
+                'Indian Constitution': () => [`Which part of the Constitution deals with Fundamental Rights?`,['Part III','Part II','Part IV','Part V'],0,'Fundamental Rights are contained in Part III of the Constitution.'],
+                'History': () => [`Who founded the Maurya Empire?`,['Chandragupta Maurya','Ashoka','Harsha','Samudragupta'],0,'Chandragupta Maurya founded the Maurya Empire.'],
+                'Geography': () => [`Which is the longest river flowing entirely within India?`,['Godavari','Ganga','Yamuna','Narmada'],0,'The Godavari is generally recognized as the longest river flowing entirely within India.'],
+                'Culture': () => [`Kathak is a classical dance form primarily associated with which region?`,['North India','Kerala','Tamil Nadu','Odisha'],0,'Kathak developed primarily in North India.'],
+                'Economic Scene': () => [`GDP stands for:`,['Gross Domestic Product','General Domestic Price','Gross Development Plan','Government Domestic Product'],0,'GDP means Gross Domestic Product.'],
+                'Scientific Research': () => [`Which instrument is used to measure atmospheric pressure?`,['Barometer','Thermometer','Hygrometer','Anemometer'],0,'A barometer measures atmospheric pressure.'],
+                'Static General Knowledge': () => [`What is the capital of Australia?`,['Canberra','Sydney','Melbourne','Perth'],0,'Canberra is the capital of Australia.']
+            }
+        };
+
+        function normalizeSubject(subjectId) {
+            if (subjectId.includes('math')) return 'maths';
+            if (subjectId.includes('reasoning')) return 'reasoning';
+            if (subjectId.includes('english')) return 'english';
+            if (subjectId.includes('computer')) return 'computer';
+            return 'ga';
+        }
+
         function generateQuestion(subjectId, topicName) {
-            // Procedurally generates SSC CHSL format template questions
-            let q = { topic: topicName, difficulty: 'Medium' };
-
-            if (subjectId.includes('math')) {
-                const cost = randInt(20, 100) * 10;
-                const profitPct = randInt(1, 4) * 5;
-                const sp = cost + (cost * profitPct / 100);
-                q.question = `An article is purchased for ₹${cost} and sold at a profit of ${profitPct}%. What is the selling price of the article?`;
-                q.options = [`₹${sp}`, `₹${sp + 10}`, `₹${sp - 15}`, `₹${sp + 25}`];
-                q.answer = 0;
-                q.explanation = `Profit = ${profitPct}% of ₹${cost} = ₹${(cost * profitPct / 100)}. Selling Price = ₹${cost} + ₹${(cost * profitPct / 100)} = ₹${sp}.`;
-            } else if (subjectId.includes('reasoning')) {
-                const n = randInt(2, 8);
-                const s1 = n, s2 = n*2, s3 = n*3, s4 = n*4, s5 = n*5;
-                q.question = `Find the missing number in the series: ${s1}, ${s2}, ${s3}, ${s4}, ?`;
-                q.options = [`${s5}`, `${s5 + 2}`, `${s5 - 4}`, `${s5 + 6}`];
-                q.answer = 0;
-                q.explanation = `The series follows an addition pattern of +${n} at each step. Next number is ${s4} + ${n} = ${s5}.`;
-            } else if (subjectId.includes('english')) {
-                const words = [
-                    { w: 'ABUNDANT', syn: 'Plentiful', ant: 'Scarce' },
-                    { w: 'CANDID', syn: 'Frank', ant: 'Deceptive' },
-                    { w: 'FRUGAL', syn: 'Economical', ant: 'Extravagant' }
-                ];
-                const item = words[randInt(0, words.length - 1)];
-                q.question = `Select the most appropriate SYNONYM of the given word: "${item.w}"`;
-                q.options = [item.syn, item.ant, 'Obscure', 'Rigid'];
-                q.answer = 0;
-                q.explanation = `"${item.w}" means existing or available in large quantities. Its closest synonym is "${item.syn}".`;
-            } else if (subjectId.includes('computer')) {
-                q.question = `Which of the following short-cut keys is used to paste copied text in MS Word?`;
-                q.options = [`Ctrl + V`, `Ctrl + C`, `Ctrl + X`, `Ctrl + P`];
-                q.answer = 0;
-                q.explanation = `Ctrl + V is the standard universal keyboard shortcut for pasting clipboard content.`;
-            } else {
-                // General Awareness
-                q.question = `The Fundamental Duties of Indian citizens were incorporated into the Constitution upon recommendation of which committee?`;
-                q.options = [`Swaran Singh Committee`, `Sarkaria Commission`, `Balwant Rai Mehta Committee`, `Verma Committee`];
-                q.answer = 0;
-                q.explanation = `The 42nd Amendment Act, 1976 added Fundamental Duties based on the recommendations of the Swaran Singh Committee.`;
+            const type=normalizeSubject(subjectId);
+            const fn=(QUESTION_BANK[type]||{})[topicName];
+            let data=fn ? fn() : null;
+            if (!data) {
+                data = [`Which statement is most closely associated with ${topicName}?`,['Option A','Option B','Option C','Option D'],0,`This practice question is tagged to ${topicName}.`];
             }
-
-            // Shuffle options to ensure randomness
-            const originalCorrect = q.options[q.answer];
-            for (let i = q.options.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [q.options[i], q.options[j]] = [q.options[j], q.options[i]];
-            }
-            q.answer = q.options.indexOf(originalCorrect);
+            const q={topic:topicName,difficulty:['Easy','Medium','Hard'][randInt(0,2)],question:data[0],options:[...data[1]],answer:data[2],explanation:data[3]};
+            const originalCorrect=q.options[q.answer];
+            for(let i=q.options.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[q.options[i],q.options[j]]=[q.options[j],q.options[i]];}
+            q.answer=q.options.indexOf(originalCorrect);
             return q;
+        }
+
+        function generateMixedQuestions(count=20){
+            const pool=[];
+            SYLLABUS_TIER1.forEach(s=>s.topics.forEach(t=>pool.push({subjectId:s.id,topic:t})));
+            const qs=[]; for(let i=0;i<count;i++){const item=pool[randInt(0,pool.length-1)]; qs.push(generateQuestion(item.subjectId,item.topic));} return qs;
         }
 
         /* ==========================================================================
@@ -814,19 +842,16 @@
         function renderActivityChart() {
             const ctx = document.getElementById('activityChart').getContext('2d');
             if (window.myChart) window.myChart.destroy();
-            window.myChart = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-                    datasets: [{
-                        label: 'Questions Solved',
-                        data: [12, 19, 3, 5, 2, 20, 15],
-                        backgroundColor: '#4f46e5',
-                        borderRadius: 6
-                    }]
-                },
-                options: { responsive: true, plugins: { legend: { display: false } } }
-            });
+            const user = appState.users[appState.currentUser] || {};
+            const activity = user.activityByDate || {};
+            const labels = [], data = [];
+            for (let i = 6; i >= 0; i--) {
+                const d = new Date(); d.setHours(0,0,0,0); d.setDate(d.getDate() - i);
+                const key = d.toISOString().slice(0,10);
+                labels.push(d.toLocaleDateString(undefined,{weekday:'short'}));
+                data.push(activity[key] || 0);
+            }
+            window.myChart = new Chart(ctx, { type:'bar', data:{ labels, datasets:[{ label:'Questions Solved', data, backgroundColor:'#4f46e5', borderRadius:6 }] }, options:{ responsive:true, plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true,ticks:{precision:0}}} } });
         }
 
         /* ==========================================================================
@@ -870,30 +895,17 @@
            ========================================================================== */
 
         function startTopicQuiz(subjectId, topicName) {
-            let questions = [];
-            for (let i = 0; i < 20; i++) {
-                questions.push(generateQuestion(subjectId, topicName));
-            }
-            
-            appState.currentQuiz = {
-                subjectId,
-                topicName,
-                questions,
-                userAnswers: new Array(20).fill(null),
-                markedReview: new Array(20).fill(false),
-                currentIndex: 0,
-                timeLeft: 1200 // 20 minutes countdown
-            };
-
-            navigateTo('quiz');
-            renderQuizQuestion();
-            startQuizTimer();
+            const questions = [];
+            for (let i = 0; i < 20; i++) questions.push(generateQuestion(subjectId, topicName));
+            appState.currentQuiz = { subjectId, topicName, questions, userAnswers: new Array(20).fill(null), markedReview: new Array(20).fill(false), currentIndex: 0, timeLeft: 1200 };
+            navigateTo('quiz'); renderQuizQuestion(); startQuizTimer();
         }
 
         function startQuickTest() {
-            startTopicQuiz('maths', 'Mixed Speed Test');
+            const questions = generateMixedQuestions(20);
+            appState.currentQuiz = { subjectId: 'mixed', topicName: 'Mixed Speed Test', questions, userAnswers: new Array(20).fill(null), markedReview: new Array(20).fill(false), currentIndex: 0, timeLeft: 1200 };
+            navigateTo('quiz'); renderQuizQuestion(); startQuizTimer();
         }
-
         function renderQuizQuestion() {
             const qState = appState.currentQuiz;
             const q = qState.questions[qState.currentIndex];
@@ -1230,7 +1242,8 @@ window.handleRegister = async function(e) {
       uid: cred.user.uid, name, username, email,
       targetPost: 'LDC', dailyGoal: 20, dailySolved: 0,
       totalTests: 0, totalQuestions: 0, correctAnswers: 0,
-      streak: 1, lastActiveDate: new Date().toDateString(),
+      streak: 0, lastActiveDate: null,
+      activityByDate: {},
       topicProgress: {}, quizHistory: [], bookmarks: [], weakTopics: []
     };
     await setDoc(doc(db, 'users', cred.user.uid), {
@@ -1277,65 +1290,27 @@ window.saveState = function() {
 // Persist completed quiz attempts separately for analytics/history.
 const originalSubmitQuiz = window.submitQuiz;
 window.submitQuiz = async function() {
-  const qState = appState.currentQuiz;
-  if (!qState) return;
+  const qState = appState.currentQuiz; if (!qState) return;
   clearInterval(appState.quizTimerId);
-  let correct = 0, incorrect = 0, unanswered = 0;
-  qState.questions.forEach((q, idx) => {
-    const ans = qState.userAnswers[idx];
-    if (ans === q.answer) correct++;
-    else if (ans !== null) incorrect++;
-    else unanswered++;
-  });
-  const user = appState.users[appState.currentUser];
-  user.totalTests = (user.totalTests || 0) + 1;
-  user.totalQuestions = (user.totalQuestions || 0) + qState.questions.length;
-  user.correctAnswers = (user.correctAnswers || 0) + correct;
-  user.dailySolved = (user.dailySolved || 0) + qState.questions.length;
-  const accuracyPct = Math.round((correct / qState.questions.length) * 100);
-  user.topicProgress = user.topicProgress || {};
-  user.topicProgress[qState.topicName] = {
-    solved: (user.topicProgress[qState.topicName]?.solved || 0) + qState.questions.length,
-    status: accuracyPct >= 70 ? 'Completed' : 'In Progress'
-  };
-  user.weakTopics = user.weakTopics || [];
-  if (accuracyPct < 60 && !user.weakTopics.includes(qState.topicName)) user.weakTopics.push(qState.topicName);
-  user.lastActiveDate = new Date().toDateString();
-
-  const attempt = {
-    tier: qState.subjectId?.startsWith('tier2') ? 'Tier-II' : 'Tier-I',
-    subject: qState.subjectId,
-    topic: qState.topicName,
-    totalQuestions: qState.questions.length,
-    attempted: qState.questions.length - unanswered,
-    correct, incorrect, unanswered,
-    score: correct,
-    accuracy: accuracyPct,
-    timeLeft: qState.timeLeft,
-    completedAt: serverTimestamp()
-  };
-  try {
-    await addDoc(collection(db, 'users', appState.currentUser, 'quizAttempts'), attempt);
-    await cloudSaveCurrentUser();
-  } catch (err) {
-    console.error('Quiz cloud save failed:', err);
-  }
-
-  document.getElementById('res-score').innerText = `${correct} / ${qState.questions.length}`;
-  document.getElementById('res-accuracy-txt').innerText = `Accuracy: ${accuracyPct}%`;
-  const reviewList = document.getElementById('review-list');
-  reviewList.innerHTML = qState.questions.map((q, idx) => {
-    const uAns = qState.userAnswers[idx];
-    const isCorrect = uAns === q.answer;
-    return `<div class="card" style="border-left: 4px solid ${isCorrect ? 'var(--success)' : 'var(--danger)'}">
-      <strong>Q${idx + 1}: ${q.question}</strong>
-      <div style="margin-top:0.5rem;font-size:0.875rem;">Your Answer: <span style="font-weight:600;">${uAns !== null ? q.options[uAns] : 'Not Answered'}</span></div>
-      <div style="font-size:0.875rem;">Correct Answer: <span style="font-weight:600;color:var(--success);">${q.options[q.answer]}</span></div>
-      <div style="margin-top:0.5rem;padding:0.5rem;background:var(--primary-light);border-radius:var(--radius-sm);font-size:0.875rem;"><strong>Explanation:</strong> ${q.explanation}</div>
-    </div>`;
-  }).join('');
-  navigateTo('result');
-  renderDashboard();
+  let correct=0, incorrect=0, unanswered=0;
+  qState.questions.forEach((q,i)=>{ const ans=qState.userAnswers[i]; if(ans===q.answer) correct++; else if(ans!==null) incorrect++; else unanswered++; });
+  const attempted=correct+incorrect;
+  const score=correct-(incorrect*0.5);
+  const accuracyPct=attempted?Math.round(correct/attempted*100):0;
+  const user=appState.users[appState.currentUser];
+  user.totalTests=(user.totalTests||0)+1; user.totalQuestions=(user.totalQuestions||0)+attempted; user.correctAnswers=(user.correctAnswers||0)+correct; user.dailySolved=(user.dailySolved||0)+attempted;
+  user.activityByDate=user.activityByDate||{}; const today=new Date().toISOString().slice(0,10); user.activityByDate[today]=(user.activityByDate[today]||0)+attempted;
+  const previous=user.lastActiveDate; if(previous!==today){ if(previous){ const prev=new Date(previous); const now=new Date(today); const diff=Math.round((now-prev)/86400000); user.streak=diff===1?(user.streak||0)+1:1; } else user.streak=1; user.lastActiveDate=today; }
+  user.topicProgress=user.topicProgress||{};
+  qState.questions.forEach((q,i)=>{ if(qState.userAnswers[i]===null) return; const key=`${qState.subjectId}::${q.topic}`; const old=user.topicProgress[key]||{solved:0,correct:0}; old.solved++; if(qState.userAnswers[i]===q.answer) old.correct++; old.status=Math.round(old.correct/old.solved*100)>=70?'Completed':'In Progress'; user.topicProgress[key]=old; });
+  user.weakTopics=user.weakTopics||[]; qState.questions.forEach(q=>{ const key=`${qState.subjectId}::${q.topic}`; const tp=user.topicProgress[key]; if(tp&&tp.solved>=5&&tp.correct/tp.solved<0.6&&!user.weakTopics.includes(key)) user.weakTopics.push(key); });
+  const attempt={tier:qState.subjectId?.startsWith('tier2')?'Tier-II':'Tier-I',subject:qState.subjectId,topic:qState.topicName,totalQuestions:qState.questions.length,attempted,correct,incorrect,unanswered,score,accuracy:accuracyPct,negativeMarking:-incorrect*0.5,timeLeft:qState.timeLeft,completedAt:serverTimestamp()};
+  try{ await addDoc(collection(db,'users',appState.currentUser,'quizAttempts'),attempt); await cloudSaveCurrentUser(); }catch(err){console.error('Quiz cloud save failed:',err);}
+  document.getElementById('res-score').innerText=`${score % 1 === 0 ? score : score.toFixed(1)} / ${qState.questions.length}`;
+  document.getElementById('res-accuracy-txt').innerText=`Accuracy: ${accuracyPct}% • ${correct} correct • ${incorrect} incorrect • ${unanswered} unanswered • −0.5 per wrong answer`;
+  const reviewList=document.getElementById('review-list');
+  reviewList.innerHTML=qState.questions.map((q,i)=>{ const ua=qState.userAnswers[i]; const answered=ua!==null; const ok=answered&&ua===q.answer; return `<div class="card" style="border-left:4px solid ${ok?'var(--success)':answered?'var(--danger)':'var(--warning)'}"><strong>Q${i+1}: ${q.question}</strong><div style="margin-top:.5rem;font-size:.875rem;">Your Answer: <span style="font-weight:600;">${answered?q.options[ua]:'Not Answered'}</span></div><div style="font-size:.875rem;">Correct Answer: <span style="font-weight:600;color:var(--success);">${q.options[q.answer]}</span></div><div style="margin-top:.5rem;padding:.5rem;background:var(--primary-light);border-radius:var(--radius-sm);font-size:.875rem;"><strong>Explanation:</strong> ${q.explanation}</div></div>`; }).join('');
+  appState.currentQuiz=null; navigateTo('result'); renderDashboard();
 };
 
 // Profile update -> Firestore.
