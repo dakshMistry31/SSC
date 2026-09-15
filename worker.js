@@ -14,7 +14,7 @@
  * No Gemini secret is sent to the browser.
  */
 
-const MODEL = "gemini-2.5-flash";
+const MODEL = "gemini-3.6-flash";
 const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
 const FIREBASE_LOOKUP_URL = "https://identitytoolkit.googleapis.com/v1/accounts:lookup";
 
@@ -223,7 +223,6 @@ async function generateWithGemini(prompt, env) {
       },
       contents: [{ role: "user", parts: [{ text: prompt }] }],
       generationConfig: {
-        temperature: 0.75,
         maxOutputTokens: 14000,
         responseMimeType: "application/json",
         responseSchema: JSON_SCHEMA
@@ -304,7 +303,6 @@ export default {
     const url = new URL(request.url);
     if (request.method === "GET" && url.pathname === "/health") return json({ ok: true, service: "CHSL Mastery AI" }, 200, env);
     if (request.method === "POST" && url.pathname === "/generate-test") return handleGenerate(request, env);
-    // Serve the GitHub Pages site through Cloudflare Workers Static Assets.
     if (env.ASSETS) return env.ASSETS.fetch(request);
     return json({ error: "Not found." }, 404, env);
   }
