@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SSC CHSL Planner & Auto-Graded Weekly Quiz</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-100 font-sans text-slate-800 min-h-screen pb-12">
+
+  <!-- Header -->
+  <header class="bg-indigo-600 text-white p-4 shadow-md">
+    <div class="max-w-4xl mx-auto flex justify-between items-center">
+      <h1 class="text-xl font-bold">🎯 SSC CHSL Prep & Auto-Quiz Hub</h1>
+      <div class="flex gap-2 items-center">
+        <span class="text-xs font-semibold">User:</span>
+        <select id="activeUser" onchange="switchUser(this.value)" class="bg-indigo-700 text-white px-3 py-1 rounded text-sm outline-none cursor-pointer">
+          <option value="Daksh">Daksh</option>
+          <option value="Friend">Friend</option>
+        </select>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-4xl mx-auto p-4 space-y-6">
+
+    <!-- Mode Toggles -->
+    <div class="flex gap-4 border-b border-gray-300 pb-2">
+      <button id="btnPlanner" onclick="showTab('planner')" class="font-bold text-indigo-600 border-b-2 border-indigo-600 pb-1 text-sm">📅 Daily Task Planner</button>
+      <button id="btnQuiz" onclick="showTab('quiz')" class="font-bold text-gray-500 hover:text-indigo-600 pb-1 text-sm">📝 Weekly Auto-Quiz</button>
+    </div>
+
+    <!-- TAB 1: PLANNER SECTION -->
+    <div id="plannerTab" class="space-y-6">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="bg-white p-4 rounded-xl shadow border-l-4 border-indigo-500">
+          <h2 class="font-semibold text-gray-700">Daksh's Task Progress</h2>
+          <div class="w-full bg-gray-200 h-4 rounded-full mt-2 overflow-hidden">
+            <div id="dakshBar" class="bg-indigo-600 h-full w-0 transition-all duration-300"></div>
+          </div>
+          <p id="dakshStats" class="text-xs text-gray-500 mt-1">0 tasks completed</p>
+        </div>
+
+        <div class="bg-white p-4 rounded-xl shadow border-l-4 border-emerald-500">
+          <h2 class="font-semibold text-gray-700">Friend's Task Progress</h2>
+          <div class="w-full bg-gray-200 h-4 rounded-full mt-2 overflow-hidden">
+            <div id="friendBar" class="bg-emerald-500 h-full w-0 transition-all duration-300"></div>
+          </div>
+          <p id="friendStats" class="text-xs text-gray-500 mt-1">0 tasks completed</p>
+        </div>
+      </div>
+
+      <!-- Add Task Form -->
+      <div class="bg-white p-5 rounded-xl shadow">
+        <h3 class="text-md font-bold mb-3 text-gray-800">Add Study Task</h3>
+        <form onsubmit="addTask(event)" class="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <select id="taskSubject" class="p-2 border rounded-lg text-sm bg-gray-50" required>
+            <option value="Quantitative Aptitude">Quantitative Aptitude</option>
+            <option value="Reasoning & General Intelligence">Reasoning & General Intelligence</option>
+            <option value="English Language">English Language</option>
+            <option value="General Awareness">General Awareness</option>
+            <option value="Computer Knowledge">Computer Knowledge</option>
+          </select>
+          <input type="text" id="taskTitle" placeholder="Task details (e.g. 30 Surds questions)" class="p-2 border rounded-lg text-sm bg-gray-50" required>
+          <button type="submit" class="bg-indigo-600 text-white font-medium p-2 rounded-lg text-sm hover:bg-indigo-700">+ Add Task</button>
+        </form>
+      </div>
+
+      <!-- Task Board -->
+      <div class="bg-white p-5 rounded-xl shadow">
+        <h3 class="text-md font-bold text-gray-800 mb-3">Task Board</h3>
+        <div id="taskList" class="space-y-3"></div>
+      </div>
+    </div>
+
+    <!-- TAB 2: WEEKLY AUTOMATED QUIZ SECTION -->
+    <div id="quizTab" class="space-y-6 hidden">
+      <div class="bg-white p-5 rounded-xl shadow">
+        <div class="flex justify-between items-center mb-4">
+          <div>
+            <h2 class="text-lg font-bold text-gray-800">SSC CHSL Weekly Mock Test</h2>
+            <p class="text-xs text-gray-500">Randomized auto-evaluated questions across Quant, Reasoning, English, GA & Computer Knowledge.</p>
+          </div>
+          <button onclick="loadNewQuiz()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-3 py-2 rounded-lg font-medium">🔀 Generate New Test</button>
+        </div>
+
+        <form id="quizForm" onsubmit="gradeQuiz(event)" class="space-y-6">
+          <div id="quizContainer" class="space-y-6"></div>
+          
+          <button type="submit" id="btnSubmitQuiz" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-lg shadow">
+            Submit Test & View Results
+          </button>
+        </form>
+
+        <!-- Quiz Score Card -->
+        <div id="quizResult" class="hidden mt-6 p-5 bg-indigo-50 border border-indigo-200 rounded-xl text-center">
+          <h3 class="text-xl font-bold text-indigo-900">Quiz Completed!</h3>
+          <p id="scoreText" class="text-2xl font-black text-indigo-600 my-2">0 / 0</p>
+          <p id="feedbackText" class="text-sm text-gray-600"></p>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <script>
+    // --- SSC CHSL QUESTION BANK FOR AUTO-QUIZ ---
+    const questionBank = [
+      {
+        subject: "Quantitative Aptitude",
+        question: "If sin(θ) + cos(θ) = 1, what is the value of sin(θ) × cos(θ)?",
+        options: ["0", "1", "0.5", "2"],
+        answer: 0,
+        explanation: "Squaring both sides gives sin²θ + cos²θ + 2sinθcosθ = 1. Since sin²θ + cos²θ = 1, 1 + 2sinθcosθ = 1 ⇒ 2sinθcosθ = 0 ⇒ sinθcosθ = 0."
+      },
+      {
+        subject: "Quantitative Aptitude",
+        question: "Find the mean of the numbers: 12, 15, 18, 21, 24.",
+        options: ["16", "17", "18", "19"],
+        answer: 2,
+        explanation: "Mean = (12 + 15 + 18 + 21 + 24) / 5 = 90 / 5 = 18."
+      },
+      {
+        subject: "Reasoning & General Intelligence",
+        question: "Select the option related to the third term: Book : Reading :: Fork : ?",
+        options: ["Writing", "Eating", "Cooking", "Cutting"],
+        answer: 1,
+        explanation: "A book is used for reading; a fork is used for eating."
+      },
+      {
+        subject: "English Language",
+        question: "Select the correctly spelt word:",
+        options: ["Accomodate", "Accommodate", "Acommodate", "Accommodat"],
+        answer: 1,
+        explanation: "The correct spelling is 'Accommodate' with double 'c' and double 'm'."
+      },
+      {
+        subject: "Computer Knowledge",
+        question: "Which of the following is considered the brain of the computer?",
+        options: ["RAM", "Hard Disk", "CPU", "Motherboard"],
+        answer: 2,
+        explanation: "The Central Processing Unit (CPU) executes instructions and acts as the brain."
+      },
+      {
+        subject: "General Awareness",
+        question: "The fundamental identity sin²θ + cos²θ = 1 belongs to which mathematical domain?",
+        options: ["Algebra", "Trigonometry", "Geometry", "Statistics"],
+        answer: 1,
+        explanation: "Standard identities like sin²θ + cos²θ = 1 are part of Trigonometry."
+      }
+    ];
+
+    // --- STATE MANAGEMENT ---
+    let currentUser = localStorage.getItem('chsl_user') || 'Daksh';
+    document.getElementById('activeUser').value = currentUser;
+
+    let tasks = JSON.parse(localStorage.getItem('chsl_tasks')) || [
+      { id: 1, user: 'Daksh', subject: 'Quantitative Aptitude', title: 'Solve 20 Trigonometry Questions', completed: false }
+    ];
+
+    let currentQuizQuestions = [];
+
+    // --- TAB SWITCHER ---
+    function showTab(tab) {
+      if(tab === 'planner') {
+        document.getElementById('plannerTab').classList.remove('hidden');
+        document.getElementById('quizTab').classList.add('hidden');
+        document.getElementById('btnPlanner').className = "font-bold text-indigo-600 border-b-2 border-indigo-600 pb-1 text-sm";
+        document.getElementById('btnQuiz').className = "font-bold text-gray-500 hover:text-indigo-600 pb-1 text-sm";
+      } else {
+        document.getElementById('plannerTab').classList.add('hidden');
+        document.getElementById('quizTab').classList.remove('hidden');
+        document.getElementById('btnQuiz').className = "font-bold text-indigo-600 border-b-2 border-indigo-600 pb-1 text-sm";
+        document.getElementById('btnPlanner').className = "font-bold text-gray-500 hover:text-indigo-600 pb-1 text-sm";
+        if(currentQuizQuestions.length === 0) loadNewQuiz();
+      }
+    }
+
+    // --- USER & TASKS LOGIC ---
+    function switchUser(name) {
+      currentUser = name;
+      localStorage.setItem('chsl_user', name);
+      renderTasks();
+    }
+
+    function addTask(e) {
+      e.preventDefault();
+      const subject = document.getElementById('taskSubject').value;
+      const title = document.getElementById('taskTitle').value;
+      tasks.push({ id: Date.now(), user: currentUser, subject, title, completed: false });
+      saveAndRender();
+      document.getElementById('taskTitle').value = '';
+    }
+
+    function toggleTask(id) {
+      tasks = tasks.map(t => t.id === id ? { ...t, completed: !t.completed } : t);
+      saveAndRender();
+    }
+
+    function deleteTask(id) {
+      tasks = tasks.filter(t => t.id !== id);
+      saveAndRender();
+    }
+
+    function saveAndRender() {
+      localStorage.setItem('chsl_tasks', JSON.stringify(tasks));
+      renderTasks();
+    }
+
+    function renderTasks() {
+      const taskListEl = document.getElementById('taskList');
+      taskListEl.innerHTML = tasks.length ? '' : `<p class="text-xs text-gray-400 text-center py-2">No active tasks.</p>`;
+
+      tasks.forEach(t => {
+        const card = document.createElement('div');
+        card.className = `p-3 rounded-lg border flex items-center justify-between ${t.completed ? 'bg-gray-50 opacity-60' : 'bg-white'}`;
+        card.innerHTML = `
+          <div class="flex items-center gap-3">
+            <input type="checkbox" ${t.completed ? 'checked' : ''} onchange="toggleTask(${t.id})" class="w-4 h-4 text-indigo-600">
+            <div>
+              <p class="text-sm font-semibold ${t.completed ? 'line-through text-gray-400' : 'text-gray-800'}">${t.title}</p>
+              <span class="text-xs px-2 py-0.5 rounded bg-indigo-50 text-indigo-600 font-medium">${t.subject} (${t.user})</span>
+            </div>
+          </div>
+          <button onclick="deleteTask(${t.id})" class="text-xs text-red-400 hover:text-red-600">Delete</button>
+        `;
+        taskListEl.appendChild(card);
+      });
+
+      // Stats Update
+      const dTasks = tasks.filter(t => t.user === 'Daksh');
+      const dDone = dTasks.filter(t => t.completed).length;
+      document.getElementById('dakshBar').style.width = (dTasks.length ? (dDone/dTasks.length)*100 : 0) + '%';
+      document.getElementById('dakshStats').innerText = `${dDone} of ${dTasks.length} completed`;
+
+      const fTasks = tasks.filter(t => t.user === 'Friend');
+      const fDone = fTasks.filter(t => t.completed).length;
+      document.getElementById('friendBar').style.width = (fTasks.length ? (fDone/fTasks.length)*100 : 0) + '%';
+      document.getElementById('friendStats').innerText = `${fDone} of ${fTasks.length} completed`;
+    }
+
+    // --- AUTO-GRADED QUIZ LOGIC ---
+    function loadNewQuiz() {
+      document.getElementById('quizResult').classList.add('hidden');
+      document.getElementById('btnSubmitQuiz').classList.remove('hidden');
+      
+      // Shuffle & pick questions
+      currentQuizQuestions = [...questionBank].sort(() => 0.5 - Math.random()).slice(0, 5);
+
+      const quizContainer = document.getElementById('quizContainer');
+      quizContainer.innerHTML = '';
+
+      currentQuizQuestions.forEach((q, qIndex) => {
+        const qCard = document.createElement('div');
+        qCard.className = "p-4 border rounded-xl bg-slate-50 space-y-3";
+        
+        let optionsHTML = q.options.map((opt, oIndex) => `
+          <label class="flex items-center gap-2 p-2 border rounded-lg bg-white cursor-pointer hover:bg-indigo-50 text-sm">
+            <input type="radio" name="question_${qIndex}" value="${oIndex}" required class="text-indigo-600">
+            <span>${opt}</span>
+          </label>
+        `).join('');
+
+        qCard.innerHTML = `
+          <div class="flex justify-between items-center">
+            <span class="text-xs font-bold px-2 py-1 bg-indigo-100 text-indigo-700 rounded">Q${qIndex + 1} - ${q.subject}</span>
+          </div>
+          <p class="font-semibold text-gray-800 text-sm">${q.question}</p>
+          <div class="space-y-2">${optionsHTML}</div>
+          <div id="explanation_${qIndex}" class="hidden p-3 text-xs rounded-lg mt-2"></div>
+        `;
+        quizContainer.appendChild(qCard);
+      });
+    }
+
+    function gradeQuiz(e) {
+      e.preventDefault();
+      let score = 0;
+
+      currentQuizQuestions.forEach((q, qIndex) => {
+        const selected = document.querySelector(`input[name="question_${qIndex}"]:checked`);
+        const expDiv = document.getElementById(`explanation_${qIndex}`);
+        expDiv.classList.remove('hidden');
+
+        if(selected && parseInt(selected.value) === q.answer) {
+          score++;
+          expDiv.className = "p-3 text-xs rounded-lg mt-2 bg-emerald-100 text-emerald-800 border border-emerald-300";
+          expDiv.innerHTML = `✅ <strong>Correct!</strong> ${q.explanation}`;
+        } else {
+          expDiv.className = "p-3 text-xs rounded-lg mt-2 bg-red-100 text-red-800 border border-red-300";
+          expDiv.innerHTML = `❌ <strong>Incorrect.</strong> Correct answer: <strong>${q.options[q.answer]}</strong>.<br>${q.explanation}`;
+        }
+      });
+
+      // Hide submit button & Display Scorecard
+      document.getElementById('btnSubmitQuiz').classList.add('hidden');
+      const resDiv = document.getElementById('quizResult');
+      resDiv.classList.remove('hidden');
+      document.getElementById('scoreText').innerText = `${score} / ${currentQuizQuestions.length}`;
+      document.getElementById('feedbackText').innerText = score === currentQuizQuestions.length 
+        ? `Outstanding performance, ${currentUser}! You mastered this weekly test!`
+        : `Good effort ${currentUser}! Review the solutions above to polish weaker areas.`;
+    }
+
+    // Initial setup
+    renderTasks();
+  </script>
+</body>
+</html>
