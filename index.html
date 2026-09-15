@@ -157,6 +157,14 @@
             .mobile-toggle { display: block; }
             .search-bar { display: none; }
         }
+
+        .ai-btn { background: linear-gradient(135deg, #7c3aed, #4f46e5); }
+        .ai-btn:hover { filter: brightness(1.05); }
+        .ai-modal-content { max-width: 620px; }
+        .ai-form-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:1rem; }
+        .ai-status { padding:.75rem 1rem; border-radius:var(--radius-md); background:var(--primary-light); color:var(--text-main); font-size:.875rem; }
+        .ai-loading { display:flex; align-items:center; gap:.65rem; color:var(--text-muted); }
+        @media(max-width:700px){ .ai-form-grid{grid-template-columns:1fr;} }
     </style>
 </head>
 <body>
@@ -245,6 +253,7 @@
                 <li class="nav-item"><a href="#" class="nav-link" onclick="navigateTo('revision')"><i class="fa-solid fa-rotate-left"></i> Revision Mode</a></li>
                 <li class="nav-item"><a href="#" class="nav-link" onclick="navigateTo('bookmarks')"><i class="fa-solid fa-bookmark"></i> Bookmarks</a></li>
                 <li class="nav-item"><a href="#" class="nav-link" onclick="navigateTo('profile')"><i class="fa-solid fa-user"></i> Profile</a></li>
+                <li class="nav-item"><a href="#" class="nav-link" onclick="openAiTestModal()"><i class="fa-solid fa-wand-magic-sparkles"></i> AI Test Lab</a></li>
                 <li class="nav-item"><a href="#" class="nav-link" onclick="navigateTo('settings')"><i class="fa-solid fa-gear"></i> Settings</a></li>
                 <li class="nav-item" style="margin-top: 2rem;"><a href="#" class="nav-link" onclick="handleLogout()"><i class="fa-solid fa-right-from-bracket"></i> Logout</a></li>
             </ul>
@@ -335,6 +344,7 @@
                                 </div>
                                 <div class="flex flex-col gap-2">
                                     <button class="btn-primary" onclick="startQuickTest()"><i class="fa-solid fa-bolt"></i> Take Quick Mixed Quiz</button>
+                                    <button class="btn-primary ai-btn" onclick="openAiTestModal()"><i class="fa-solid fa-wand-magic-sparkles"></i> Generate AI Test</button>
                                     <button class="btn-primary" style="background:#0284c7;" onclick="navigateTo('weak-areas')"><i class="fa-solid fa-crosshairs"></i> Practice Weak Areas</button>
                                 </div>
                             </div>
@@ -574,6 +584,9 @@
             }
         ];
 
+        // Expose the syllabus to the Firebase/AI module without duplicating the source data.
+        window.CHSL_SYLLABUS = { tier1: SYLLABUS_TIER1, tier2: SYLLABUS_TIER2 };
+
         /* ==========================================================================
            2. PROCEDURAL QUESTION GENERATION ENGINE
            ========================================================================== */
@@ -600,7 +613,30 @@
                 'Number Series': () => { const a=randInt(2,12),d=randInt(2,9), vals=[a,a+d,a+2*d,a+3*d],ans=a+4*d; return [`Find the next number: ${vals.join(', ')}, ?`,[`${ans}`,`${ans+d}`,`${ans- d}`,`${ans+2}`],0,`The series increases by ${d} each time, so the next number is ${ans}.`]; },
                 'Semantic Analogy': () => { const pairs=[['Bird','Nest','Lion','Den'],['Doctor','Hospital','Teacher','School'],['Book','Read','Food','Eat'],['Fish','Water','Bird','Air']]; const x=pairs[randInt(0,pairs.length-1)]; return [`${x[0]} : ${x[1]} :: ${x[2]} : ?`,[x[3],'Road','House','Office'],0,`${x[0]} is associated with ${x[1]} in the same way that ${x[2]} is associated with ${x[3]}.`]; },
                 'Coding & De-coding': () => { const letters=['CAT','DOG','PEN','SUN']; const w=letters[randInt(0,3)], code=w.split('').map(ch=>ch.charCodeAt(0)-64).join('-'); return [`If the letters of a word are represented by their alphabet positions, how is ${w} coded?`,[code,code.replace(/-/g,'+'),`${code}-1`,`${code}+1`],0,`Alphabet positions are used: ${w.split('').join(' = ')} → ${code}.`]; },
-                'Venn Diagrams': () => { const total=60,a=35,b=30,both=10,neither=total-(a+b-both); return [`In a group of ${total}, ${a} like A, ${b} like B and ${both} like both. How many like neither?`,[`${neither}`,`${neither+5}`,`${neither-5}`,`${both}`],0,`At least one = ${a}+${b}−${both} = ${a+b-both}; neither = ${total}−${a+b-both} = ${neither}.`]; },
+                'Venn Diagrams': () => {
+                    // Randomized two-set Venn problem. Every call uses a fresh, valid set of values.
+                    let total,a,b,both,union,neither;
+                    do {
+                        total=randInt(40,100);
+                        a=randInt(20,Math.min(70,total-10));
+                        b=randInt(15,Math.min(65,total-10));
+                        both=randInt(5,Math.min(a,b));
+                        union=a+b-both;
+                        neither=total-union;
+                    } while (neither<0 || union>total || neither===both);
+                    const variants=[
+                        [`In a group of ${total}, ${a} like A, ${b} like B and ${both} like both. How many like neither?`, `${neither}`],
+                        [`Out of ${total} students, ${a} study Mathematics, ${b} study English and ${both} study both. How many study neither subject?`, `${neither}`],
+                        [`In a survey of ${total} people, ${a} prefer tea, ${b} prefer coffee and ${both} prefer both. How many prefer neither?`, `${neither}`],
+                        [`Among ${total} candidates, ${a} know topic A, ${b} know topic B and ${both} know both. How many know neither?`, `${neither}`]
+                    ];
+                    const v=variants[randInt(0,variants.length-1)];
+                    const distractors=new Set([neither]);
+                    while(distractors.size<4){ const d=neither+randInt(-12,12); if(d>=0 && d<=total) distractors.add(d); }
+                    const options=[...distractors];
+                    const answer=options.indexOf(neither);
+                    return [v[0],options.map(String),answer,`At least one = ${a}+${b}−${both} = ${union}; neither = ${total}−${union} = ${neither}.`];
+                },
                 'Symbolic Operations': () => { const a=randInt(3,9),b=randInt(2,7),c=randInt(2,5),ans=a+b*c; return [`If ★ means + and ◆ means ×, find ${a} ★ ${b} ◆ ${c}.`,[`${ans}`,`${a+b+c}`,`${(a+b)*c}`,`${a*b+c}`],0,`Replace symbols: ${a} + ${b} × ${c} = ${ans}.`]; }
             },
             english: {
@@ -894,15 +930,35 @@
            7. EXAM QUIZ ENGINE & TIMERS
            ========================================================================== */
 
+        function generateUniqueQuestions(subjectId, topicName, count=20) {
+            const questions=[];
+            const seen=new Set();
+            let attempts=0;
+            while(questions.length<count && attempts<count*100){
+                const q=generateQuestion(subjectId,topicName);
+                const signature=JSON.stringify([q.question,q.options,q.answer]);
+                if(!seen.has(signature)){ seen.add(signature); questions.push(q); }
+                attempts++;
+            }
+            // A topic generator must provide genuinely different questions. If a future/static generator
+            // cannot do that yet, fail loudly instead of silently presenting duplicates.
+            if(questions.length<count){
+                console.warn(`Only ${questions.length}/${count} unique questions available for ${topicName}.`);
+            }
+            return questions;
+        }
+
         function startTopicQuiz(subjectId, topicName) {
-            const questions = [];
-            for (let i = 0; i < 20; i++) questions.push(generateQuestion(subjectId, topicName));
-            appState.currentQuiz = { subjectId, topicName, questions, userAnswers: new Array(20).fill(null), markedReview: new Array(20).fill(false), currentIndex: 0, timeLeft: 1200 };
+            const questions = generateUniqueQuestions(subjectId, topicName, 20);
+            const qCount=questions.length;
+            appState.currentQuiz = { subjectId, topicName, questions, userAnswers: new Array(qCount).fill(null), markedReview: new Array(qCount).fill(false), currentIndex: 0, timeLeft: 1200 };
             navigateTo('quiz'); renderQuizQuestion(); startQuizTimer();
         }
 
         function startQuickTest() {
-            const questions = generateMixedQuestions(20);
+            const rawQuestions = generateMixedQuestions(20);
+            const seen=new Set();
+            const questions=rawQuestions.filter(q=>{ const k=JSON.stringify([q.question,q.options,q.answer]); if(seen.has(k)) return false; seen.add(k); return true; });
             appState.currentQuiz = { subjectId: 'mixed', topicName: 'Mixed Speed Test', questions, userAnswers: new Array(20).fill(null), markedReview: new Array(20).fill(false), currentIndex: 0, timeLeft: 1200 };
             navigateTo('quiz'); renderQuizQuestion(); startQuizTimer();
         }
@@ -1125,6 +1181,63 @@
         };
     </script>
 
+
+    <div id="ai-test-modal" class="modal-overlay" aria-hidden="true">
+        <div class="modal-body ai-modal-content">
+            <div class="card-header">
+                <div>
+                    <div class="card-title"><i class="fa-solid fa-wand-magic-sparkles" style="color:var(--primary);"></i> AI Test Generator</div>
+                    <div class="page-subtitle">Fresh SSC CHSL-style questions generated for this test.</div>
+                </div>
+                <button type="button" onclick="closeAiTestModal()" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="ai-form-grid">
+                <div class="form-group">
+                    <label for="ai-tier">Exam Tier</label>
+                    <select id="ai-tier" class="form-input">
+                        <option value="Tier-I">Tier-I</option>
+                        <option value="Tier-II">Tier-II</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="ai-subject">Subject</label>
+                    <select id="ai-subject" class="form-input"></select>
+                </div>
+                <div class="form-group">
+                    <label for="ai-topic">Topic</label>
+                    <select id="ai-topic" class="form-input"></select>
+                </div>
+                <div class="form-group">
+                    <label for="ai-difficulty">Difficulty</label>
+                    <select id="ai-difficulty" class="form-input">
+                        <option value="Easy">Easy</option>
+                        <option value="Medium" selected>Medium</option>
+                        <option value="Hard">Hard</option>
+                        <option value="Mixed">Mixed</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="ai-count">Questions</label>
+                    <select id="ai-count" class="form-input">
+                        <option value="10">10</option>
+                        <option value="20" selected>20</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="ai-mode">Test Type</label>
+                    <select id="ai-mode" class="form-input">
+                        <option value="topic">Topic Test</option>
+                        <option value="mixed">Mixed Test</option>
+                    </select>
+                </div>
+            </div>
+            <div id="ai-status" class="ai-status" style="margin-bottom:1rem;">AI test generation is ready.</div>
+            <button id="ai-generate-btn" type="button" class="btn-primary ai-btn" onclick="generateAiTestFromModal()">
+                <i class="fa-solid fa-wand-magic-sparkles"></i> Generate Test
+            </button>
+        </div>
+    </div>
+
 <script type="module">
 /* ==========================================================================
    FIREBASE CLOUD SYNC - CHSL MASTERY
@@ -1201,6 +1314,7 @@ async function loadFirebaseUser(firebaseUser) {
     quizHistory: [],
     bookmarks: [],
     weakTopics: [],
+    aiRecentQuestions: [],
     createdAt: serverTimestamp()
   };
   await setDoc(ref, profile, { merge: true });
@@ -1244,7 +1358,7 @@ window.handleRegister = async function(e) {
       totalTests: 0, totalQuestions: 0, correctAnswers: 0,
       streak: 0, lastActiveDate: null,
       activityByDate: {},
-      topicProgress: {}, quizHistory: [], bookmarks: [], weakTopics: []
+      topicProgress: {}, quizHistory: [], bookmarks: [], weakTopics: [], aiRecentQuestions: []
     };
     await setDoc(doc(db, 'users', cred.user.uid), {
       ...user, createdAt: serverTimestamp(), updatedAt: serverTimestamp()
@@ -1304,7 +1418,7 @@ window.submitQuiz = async function() {
   user.topicProgress=user.topicProgress||{};
   qState.questions.forEach((q,i)=>{ if(qState.userAnswers[i]===null) return; const key=`${qState.subjectId}::${q.topic}`; const old=user.topicProgress[key]||{solved:0,correct:0}; old.solved++; if(qState.userAnswers[i]===q.answer) old.correct++; old.status=Math.round(old.correct/old.solved*100)>=70?'Completed':'In Progress'; user.topicProgress[key]=old; });
   user.weakTopics=user.weakTopics||[]; qState.questions.forEach(q=>{ const key=`${qState.subjectId}::${q.topic}`; const tp=user.topicProgress[key]; if(tp&&tp.solved>=5&&tp.correct/tp.solved<0.6&&!user.weakTopics.includes(key)) user.weakTopics.push(key); });
-  const attempt={tier:qState.subjectId?.startsWith('tier2')?'Tier-II':'Tier-I',subject:qState.subjectId,topic:qState.topicName,totalQuestions:qState.questions.length,attempted,correct,incorrect,unanswered,score,accuracy:accuracyPct,negativeMarking:-incorrect*0.5,timeLeft:qState.timeLeft,completedAt:serverTimestamp()};
+  const attempt={tier:qState.aiTier || (qState.subjectId?.startsWith('tier2')?'Tier-II':'Tier-I'),subject:qState.subjectId,topic:qState.topicName,totalQuestions:qState.questions.length,attempted,correct,incorrect,unanswered,score,accuracy:accuracyPct,negativeMarking:-incorrect*0.5,timeLeft:qState.timeLeft,aiGenerated:!!qState.aiGenerated,completedAt:serverTimestamp()};
   try{ await addDoc(collection(db,'users',appState.currentUser,'quizAttempts'),attempt); await cloudSaveCurrentUser(); }catch(err){console.error('Quiz cloud save failed:',err);}
   document.getElementById('res-score').innerText=`${score % 1 === 0 ? score : score.toFixed(1)} / ${qState.questions.length}`;
   document.getElementById('res-accuracy-txt').innerText=`Accuracy: ${accuracyPct}% • ${correct} correct • ${incorrect} incorrect • ${unanswered} unanswered • −0.5 per wrong answer`;
@@ -1378,6 +1492,177 @@ window.showAppShell = function() {
     if (postEl) postEl.value = u.targetPost || 'LDC';
   }
 };
+
+/* ==========================================================================
+   PHASE 3 - AI TEST ENGINE
+   The browser never stores the Gemini API key. It sends the Firebase ID token
+   to a separate AI backend, which verifies the user and calls Gemini.
+   Set CHSL_AI_API_URL after deploying the companion Worker.
+   ========================================================================== */
+window.CHSL_AI_API_URL = window.CHSL_AI_API_URL || '';
+
+function aiStatus(message, kind='info') {
+  const el = document.getElementById('ai-status');
+  if (!el) return;
+  el.textContent = message;
+  el.style.background = kind === 'error' ? 'var(--danger-light)' : kind === 'success' ? 'var(--success-light)' : 'var(--primary-light)';
+  el.style.color = kind === 'error' ? 'var(--danger)' : kind === 'success' ? 'var(--success)' : 'var(--text-main)';
+}
+
+function getAiSyllabus(tier) {
+  return tier === 'Tier-II' ? (window.CHSL_SYLLABUS?.tier2 || []) : (window.CHSL_SYLLABUS?.tier1 || []);
+}
+
+function populateAiSubjects() {
+  const tier = document.getElementById('ai-tier')?.value || 'Tier-I';
+  const subjectEl = document.getElementById('ai-subject');
+  const topicEl = document.getElementById('ai-topic');
+  if (!subjectEl || !topicEl) return;
+  const syllabus = getAiSyllabus(tier);
+  subjectEl.innerHTML = syllabus.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+  populateAiTopics();
+}
+
+function populateAiTopics() {
+  const tier = document.getElementById('ai-tier')?.value || 'Tier-I';
+  const subjectId = document.getElementById('ai-subject')?.value;
+  const topicEl = document.getElementById('ai-topic');
+  if (!topicEl) return;
+  const subject = getAiSyllabus(tier).find(s => s.id === subjectId);
+  const topics = subject?.topics || [];
+  const mode = document.getElementById('ai-mode')?.value || 'topic';
+  topicEl.innerHTML = (mode === 'mixed' ? ['All Topics'] : topics).map(t => `<option value="${t}">${t}</option>`).join('');
+  topicEl.disabled = mode === 'mixed';
+}
+
+window.openAiTestModal = function() {
+  const modal = document.getElementById('ai-test-modal');
+  if (!modal) return;
+  populateAiSubjects();
+  aiStatus(window.CHSL_AI_API_URL ? 'AI backend connected. Ready to generate a fresh test.' : 'AI backend URL is not configured yet. The local fallback will remain available.');
+  modal.classList.add('active');
+  modal.setAttribute('aria-hidden', 'false');
+};
+
+window.closeAiTestModal = function() {
+  const modal = document.getElementById('ai-test-modal');
+  if (!modal) return;
+  modal.classList.remove('active');
+  modal.setAttribute('aria-hidden', 'true');
+};
+
+async function requestAiQuestions({tier, subjectId, subjectName, topic, difficulty='Medium', count=20, mode='topic'}) {
+  if (!window.CHSL_AI_API_URL) throw new Error('AI backend is not configured.');
+  if (!window.firebaseAuth?.currentUser) throw new Error('Please sign in before generating an AI test.');
+  const token = await window.firebaseAuth.currentUser.getIdToken();
+  const user = appState.users[appState.currentUser] || {};
+  const avoidQuestions = Array.isArray(user.aiRecentQuestions) ? user.aiRecentQuestions.slice(-20) : [];
+  const response = await fetch(window.CHSL_AI_API_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+    body: JSON.stringify({
+      tier, subjectId, subject: subjectName, topic, difficulty, count: Math.min(Math.max(Number(count) || 20, 10), 20),
+      mode,
+      avoidQuestions,
+      performance: {
+        weakTopics: Array.isArray(user.weakTopics) ? user.weakTopics.slice(-15) : [],
+        topicProgress: Object.fromEntries(Object.entries(user.topicProgress || {}).slice(-20)),
+        overallAccuracy: user.totalQuestions ? Math.round(((user.correctAnswers || 0) / user.totalQuestions) * 100) : null
+      }
+    })
+  });
+  let data = null;
+  try { data = await response.json(); } catch (_) {}
+  if (!response.ok) throw new Error(data?.error || `AI service returned ${response.status}.`);
+  if (!Array.isArray(data?.questions) || !data.questions.length) throw new Error('AI service returned no questions.');
+  const questions = data.questions.map((q, index) => {
+    const options = Array.isArray(q.options) ? q.options.map(String) : [];
+    const answer = Number(q.answer);
+    if (!q.question || options.length !== 4 || !Number.isInteger(answer) || answer < 0 || answer > 3 || !q.explanation) {
+      throw new Error(`AI returned an invalid question at position ${index + 1}.`);
+    }
+    return {
+      question: String(q.question), options, answer, explanation: String(q.explanation),
+      topic: String(q.topic || topic || 'Mixed'), difficulty: String(q.difficulty || difficulty)
+    };
+  });
+  const seen = new Set();
+  const unique = questions.filter(q => {
+    const key = q.question.trim().toLowerCase();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+  if (unique.length < Math.min(Number(count) || 20, 20)) throw new Error('AI returned duplicate questions. Please generate again.');
+  return unique.slice(0, Math.min(Number(count) || 20, 20));
+}
+
+async function launchAiQuiz({tier, subjectId, subjectName, topic, difficulty='Medium', count=20, mode='topic'}) {
+  const btn = document.getElementById('ai-generate-btn');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="ai-loading"><i class="fa-solid fa-spinner fa-spin"></i> Generating…</span>'; }
+  try {
+    const questions = await requestAiQuestions({tier, subjectId, subjectName, topic, difficulty, count, mode});
+    const user = appState.users[appState.currentUser];
+    if (user) {
+      user.aiRecentQuestions = [...(user.aiRecentQuestions || []), ...questions.map(q => q.question)].slice(-40);
+      cloudSaveCurrentUser().catch(err => console.warn('AI question history save failed:', err));
+    }
+    appState.currentQuiz = {
+      subjectId: mode === 'mixed' ? `ai_${tier.toLowerCase().replace('-', '')}_mixed` : subjectId,
+      topicName: mode === 'mixed' ? `${tier} AI Mixed Test` : `AI: ${topic}`,
+      questions, userAnswers: new Array(questions.length).fill(null), markedReview: new Array(questions.length).fill(false),
+      currentIndex: 0, timeLeft: questions.length * 60, aiGenerated: true, aiTier: tier
+    };
+    window.closeAiTestModal();
+    navigateTo('quiz'); renderQuizQuestion(); startQuizTimer();
+    return true;
+  } catch (error) {
+    console.error('AI test generation failed:', error);
+    aiStatus(error.message || 'AI test generation failed.', 'error');
+    return false;
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles"></i> Generate Test'; }
+  }
+}
+
+window.generateAiTestFromModal = async function() {
+  const tier = document.getElementById('ai-tier').value;
+  const subjectId = document.getElementById('ai-subject').value;
+  const subject = getAiSyllabus(tier).find(s => s.id === subjectId);
+  const mode = document.getElementById('ai-mode').value;
+  const topic = document.getElementById('ai-topic').value;
+  const difficulty = document.getElementById('ai-difficulty').value;
+  const count = Number(document.getElementById('ai-count').value);
+  if (!subject) return aiStatus('Please select a subject.', 'error');
+  aiStatus('AI is creating and validating your test. Please wait…');
+  await launchAiQuiz({tier, subjectId, subjectName: subject.name, topic, difficulty, count, mode});
+};
+
+// Replace topic and quick-test entry points with AI-first versions. If the backend
+// has not been deployed yet, the existing procedural generator remains the fallback.
+const proceduralStartTopicQuiz = window.startTopicQuiz;
+window.startTopicQuiz = async function(subjectId, topicName) {
+  if (!window.CHSL_AI_API_URL) return proceduralStartTopicQuiz(subjectId, topicName);
+  const tier = String(subjectId).startsWith('tier2') ? 'Tier-II' : 'Tier-I';
+  const subject = getAiSyllabus(tier).find(s => s.id === subjectId);
+  const ok = await launchAiQuiz({tier, subjectId, subjectName: subject?.name || subjectId, topic: topicName, difficulty: 'Mixed', count: 20, mode: 'topic'});
+  if (!ok) proceduralStartTopicQuiz(subjectId, topicName);
+};
+
+const proceduralStartQuickTest = window.startQuickTest;
+window.startQuickTest = async function() {
+  if (!window.CHSL_AI_API_URL) return proceduralStartQuickTest();
+  openAiTestModal();
+  const modeEl = document.getElementById('ai-mode');
+  if (modeEl) { modeEl.value = 'mixed'; populateAiTopics(); }
+};
+
+const aiTierEl = document.getElementById('ai-tier');
+const aiSubjectEl = document.getElementById('ai-subject');
+const aiModeEl = document.getElementById('ai-mode');
+if (aiTierEl) aiTierEl.addEventListener('change', populateAiSubjects);
+if (aiSubjectEl) aiSubjectEl.addEventListener('change', populateAiTopics);
+if (aiModeEl) aiModeEl.addEventListener('change', populateAiTopics);
 
 // Replace direct global calls with the Firebase-aware wrapper.
 window.__chslFirebaseVersion = '1.0';
