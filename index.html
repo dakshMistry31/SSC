@@ -95,7 +95,7 @@
         .nav-link.active { background: var(--primary); }
 
         .main-wrapper { flex: 1; display: flex; flex-direction: column; min-width: 0; }
-        .top-header { height: 64px; background: var(--bg-card); border-bottom: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between; padding: 0 1.5rem; sticky: top; z-index: 40; }
+        .top-header { height: 64px; background: var(--bg-card); border-bottom: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between; padding: 0 1.5rem; position: sticky; top: 0; z-index: 40; }
         .header-left { display: flex; align-items: center; gap: 1rem; }
         .mobile-toggle { display: none; font-size: 1.25rem; color: var(--text-main); }
         .search-bar { position: relative; width: 300px; }
@@ -178,8 +178,8 @@
             <!-- Login Form -->
             <form id="login-form" onsubmit="handleLogin(event)">
                 <div class="form-group">
-                    <label>Username</label>
-                    <input type="text" id="login-username" class="form-input" required autocomplete="username">
+                    <label>Email</label>
+                    <input type="email" id="login-username" class="form-input" required autocomplete="email">
                 </div>
                 <div class="form-group">
                     <label>Password</label>
@@ -205,8 +205,12 @@
                     <input type="text" id="reg-name" class="form-input" required>
                 </div>
                 <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="reg-email" class="form-input" required autocomplete="email">
+                </div>
+                <div class="form-group">
                     <label>Username</label>
-                    <input type="text" id="reg-username" class="form-input" required>
+                    <input type="text" id="reg-username" class="form-input" required autocomplete="username">
                 </div>
                 <div class="form-group">
                     <label>Password (min 6 chars)</label>
@@ -474,6 +478,10 @@
                                 <input type="text" id="profile-name" class="form-input">
                             </div>
                             <div class="form-group">
+                                <label>Email</label>
+                                <input type="email" id="profile-email" class="form-input" disabled>
+                            </div>
+                            <div class="form-group">
                                 <label>Target Post</label>
                                 <select id="profile-post" class="form-input">
                                     <option value="LDC">Lower Division Clerk (LDC)</option>
@@ -637,23 +645,12 @@
         };
 
         function loadState() {
-            const stored = localStorage.getItem('chsl_mastery_state');
-            if (stored) {
-                try {
-                    const parsed = JSON.parse(stored);
-                    appState.users = parsed.users || {};
-                    appState.currentUser = parsed.currentUser || null;
-                } catch (e) {
-                    console.error("Failed to load local storage state", e);
-                }
-            }
+            // Firebase Authentication + Firestore are the permanent source of truth.
+            // No user credentials or progress are loaded from localStorage.
         }
 
         function saveState() {
-            localStorage.setItem('chsl_mastery_state', JSON.stringify({
-                users: appState.users,
-                currentUser: appState.currentUser
-            }));
+            // Replaced by Firebase cloud persistence below.
         }
 
         /* ==========================================================================
@@ -1115,5 +1112,302 @@
             }
         };
     </script>
+
+<script type="module">
+/* ==========================================================================
+   FIREBASE CLOUD SYNC - CHSL MASTERY
+   Uses Firebase Authentication + Cloud Firestore.
+   localStorage is no longer used as the permanent user database.
+   ========================================================================== */
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+import {
+  getAuth, onAuthStateChanged, createUserWithEmailAndPassword,
+  signInWithEmailAndPassword, signOut, updateProfile
+} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+import {
+  getFirestore, doc, getDoc, setDoc, collection, addDoc,
+  serverTimestamp, query, orderBy, getDocs
+} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyD_TzDY6QJuL7Du8baTvFeHFeCMnIux7RI",
+  authDomain: "bcom-notes-7ab45.firebaseapp.com",
+  projectId: "bcom-notes-7ab45",
+  storageBucket: "bcom-notes-7ab45.firebasestorage.app",
+  messagingSenderId: "847831271204",
+  appId: "1:847831271204:web:46ec889ff6d3db5ea415b1"
+};
+
+const firebaseApp = initializeApp(firebaseConfig);
+const auth = getAuth(firebaseApp);
+const db = getFirestore(firebaseApp);
+
+window.firebaseReady = true;
+window.firebaseAuth = auth;
+window.firebaseDb = db;
+
+function friendlyAuthError(error) {
+  const map = {
+    "auth/invalid-credential": "Incorrect email or password.",
+    "auth/invalid-email": "Please enter a valid email address.",
+    "auth/email-already-in-use": "An account with this email already exists.",
+    "auth/weak-password": "Password must be at least 6 characters.",
+    "auth/user-not-found": "No account was found with this email.",
+    "auth/wrong-password": "Incorrect email or password.",
+    "auth/network-request-failed": "Network error. Please check your internet connection."
+  };
+  return map[error?.code] || error?.message || "Something went wrong. Please try again.";
+}
+
+function showAuthError(message, success=false) {
+  const el = document.getElementById('auth-alert');
+  el.innerText = message;
+  el.className = `alert-box ${success ? 'alert-success' : 'alert-danger'}`;
+  el.classList.remove('hidden');
+}
+
+async function loadFirebaseUser(firebaseUser) {
+  const ref = doc(db, 'users', firebaseUser.uid);
+  const snap = await getDoc(ref);
+  if (snap.exists()) {
+    return { ...snap.data(), uid: firebaseUser.uid, email: firebaseUser.email };
+  }
+  const profile = {
+    uid: firebaseUser.uid,
+    name: firebaseUser.displayName || 'Aspirant',
+    username: firebaseUser.email?.split('@')[0] || 'Aspirant',
+    email: firebaseUser.email || '',
+    targetPost: 'LDC',
+    dailyGoal: 20,
+    dailySolved: 0,
+    totalTests: 0,
+    totalQuestions: 0,
+    correctAnswers: 0,
+    streak: 1,
+    lastActiveDate: new Date().toDateString(),
+    topicProgress: {},
+    quizHistory: [],
+    bookmarks: [],
+    weakTopics: [],
+    createdAt: serverTimestamp()
+  };
+  await setDoc(ref, profile, { merge: true });
+  return { ...profile, uid: firebaseUser.uid, email: firebaseUser.email || '' };
+}
+
+async function cloudSaveCurrentUser() {
+  const u = window.appState?.currentUser;
+  if (!u || !window.firebaseAuth?.currentUser) return;
+  const user = window.appState.users[u];
+  if (!user) return;
+  const copy = JSON.parse(JSON.stringify(user));
+  delete copy.uid;
+  await setDoc(doc(db, 'users', u), {
+    ...copy,
+    updatedAt: serverTimestamp()
+  }, { merge: true });
+}
+
+// Make the existing global state accessible to this module.
+window.appState = appState;
+
+// Replace the old localStorage registration flow with Firebase Auth.
+window.handleRegister = async function(e) {
+  e.preventDefault();
+  const name = document.getElementById('reg-name').value.trim();
+  const email = document.getElementById('reg-email').value.trim().toLowerCase();
+  const username = document.getElementById('reg-username').value.trim();
+  const password = document.getElementById('reg-password').value;
+  const confirm = document.getElementById('reg-confirm-password').value;
+
+  if (password !== confirm) return showAuthError('Passwords do not match.');
+  if (password.length < 6) return showAuthError('Password must be at least 6 characters.');
+
+  try {
+    const cred = await createUserWithEmailAndPassword(auth, email, password);
+    await updateProfile(cred.user, { displayName: name });
+    const user = {
+      uid: cred.user.uid, name, username, email,
+      targetPost: 'LDC', dailyGoal: 20, dailySolved: 0,
+      totalTests: 0, totalQuestions: 0, correctAnswers: 0,
+      streak: 1, lastActiveDate: new Date().toDateString(),
+      topicProgress: {}, quizHistory: [], bookmarks: [], weakTopics: []
+    };
+    await setDoc(doc(db, 'users', cred.user.uid), {
+      ...user, createdAt: serverTimestamp(), updatedAt: serverTimestamp()
+    });
+    appState.users[cred.user.uid] = user;
+    appState.currentUser = cred.user.uid;
+    window.showAppShell();
+  } catch (error) {
+    showAuthError(friendlyAuthError(error));
+  }
+};
+
+window.handleLogin = async function(e) {
+  e.preventDefault();
+  const email = document.getElementById('login-username').value.trim().toLowerCase();
+  const password = document.getElementById('login-password').value;
+  try {
+    const cred = await signInWithEmailAndPassword(auth, email, password);
+    const user = await loadFirebaseUser(cred.user);
+    appState.users[cred.user.uid] = user;
+    appState.currentUser = cred.user.uid;
+    window.showAppShell();
+  } catch (error) {
+    showAuthError(friendlyAuthError(error));
+  }
+};
+
+window.handleLogout = async function() {
+  clearInterval(appState.quizTimerId);
+  appState.currentQuiz = null;
+  try { await signOut(auth); } catch (e) { console.error(e); }
+  appState.currentUser = null;
+  document.getElementById('app-shell').classList.add('hidden');
+  document.getElementById('auth-screen').classList.remove('hidden');
+  switchAuthTab('login');
+};
+
+// Override the old saveState so every meaningful change is synced to Firestore.
+window.saveState = function() {
+  cloudSaveCurrentUser().catch(err => console.error('Firestore save failed:', err));
+};
+
+// Persist completed quiz attempts separately for analytics/history.
+const originalSubmitQuiz = window.submitQuiz;
+window.submitQuiz = async function() {
+  const qState = appState.currentQuiz;
+  if (!qState) return;
+  clearInterval(appState.quizTimerId);
+  let correct = 0, incorrect = 0, unanswered = 0;
+  qState.questions.forEach((q, idx) => {
+    const ans = qState.userAnswers[idx];
+    if (ans === q.answer) correct++;
+    else if (ans !== null) incorrect++;
+    else unanswered++;
+  });
+  const user = appState.users[appState.currentUser];
+  user.totalTests = (user.totalTests || 0) + 1;
+  user.totalQuestions = (user.totalQuestions || 0) + qState.questions.length;
+  user.correctAnswers = (user.correctAnswers || 0) + correct;
+  user.dailySolved = (user.dailySolved || 0) + qState.questions.length;
+  const accuracyPct = Math.round((correct / qState.questions.length) * 100);
+  user.topicProgress = user.topicProgress || {};
+  user.topicProgress[qState.topicName] = {
+    solved: (user.topicProgress[qState.topicName]?.solved || 0) + qState.questions.length,
+    status: accuracyPct >= 70 ? 'Completed' : 'In Progress'
+  };
+  user.weakTopics = user.weakTopics || [];
+  if (accuracyPct < 60 && !user.weakTopics.includes(qState.topicName)) user.weakTopics.push(qState.topicName);
+  user.lastActiveDate = new Date().toDateString();
+
+  const attempt = {
+    tier: qState.subjectId?.startsWith('tier2') ? 'Tier-II' : 'Tier-I',
+    subject: qState.subjectId,
+    topic: qState.topicName,
+    totalQuestions: qState.questions.length,
+    attempted: qState.questions.length - unanswered,
+    correct, incorrect, unanswered,
+    score: correct,
+    accuracy: accuracyPct,
+    timeLeft: qState.timeLeft,
+    completedAt: serverTimestamp()
+  };
+  try {
+    await addDoc(collection(db, 'users', appState.currentUser, 'quizAttempts'), attempt);
+    await cloudSaveCurrentUser();
+  } catch (err) {
+    console.error('Quiz cloud save failed:', err);
+  }
+
+  document.getElementById('res-score').innerText = `${correct} / ${qState.questions.length}`;
+  document.getElementById('res-accuracy-txt').innerText = `Accuracy: ${accuracyPct}%`;
+  const reviewList = document.getElementById('review-list');
+  reviewList.innerHTML = qState.questions.map((q, idx) => {
+    const uAns = qState.userAnswers[idx];
+    const isCorrect = uAns === q.answer;
+    return `<div class="card" style="border-left: 4px solid ${isCorrect ? 'var(--success)' : 'var(--danger)'}">
+      <strong>Q${idx + 1}: ${q.question}</strong>
+      <div style="margin-top:0.5rem;font-size:0.875rem;">Your Answer: <span style="font-weight:600;">${uAns !== null ? q.options[uAns] : 'Not Answered'}</span></div>
+      <div style="font-size:0.875rem;">Correct Answer: <span style="font-weight:600;color:var(--success);">${q.options[q.answer]}</span></div>
+      <div style="margin-top:0.5rem;padding:0.5rem;background:var(--primary-light);border-radius:var(--radius-sm);font-size:0.875rem;"><strong>Explanation:</strong> ${q.explanation}</div>
+    </div>`;
+  }).join('');
+  navigateTo('result');
+  renderDashboard();
+};
+
+// Profile update -> Firestore.
+window.handleUpdateProfile = async function(e) {
+  e.preventDefault();
+  const user = appState.users[appState.currentUser];
+  user.name = document.getElementById('profile-name').value.trim() || user.name;
+  user.targetPost = document.getElementById('profile-post').value;
+  try {
+    if (auth.currentUser) await updateProfile(auth.currentUser, { displayName: user.name });
+    await cloudSaveCurrentUser();
+    document.getElementById('header-username').innerText = user.name;
+    document.getElementById('header-avatar').innerText = user.name.charAt(0).toUpperCase();
+    alert('Profile saved successfully!');
+  } catch (err) {
+    alert('Profile could not be saved. Please try again.');
+  }
+};
+
+// Reset progress -> Firestore.
+window.resetUserProgress = async function() {
+  if (!confirm('Are you sure you want to reset all your learning progress?')) return;
+  const user = appState.users[appState.currentUser];
+  user.totalTests = 0; user.totalQuestions = 0; user.correctAnswers = 0;
+  user.dailySolved = 0; user.topicProgress = {}; user.weakTopics = [];
+  try {
+    await cloudSaveCurrentUser();
+    window.showAppShell();
+  } catch (err) {
+    alert('Progress reset could not be saved. Please try again.');
+  }
+};
+
+// Firebase is the source of truth for session restoration.
+window.addEventListener('load', () => {
+  onAuthStateChanged(auth, async (firebaseUser) => {
+    if (!firebaseUser) {
+      appState.currentUser = null;
+      document.getElementById('app-shell').classList.add('hidden');
+      document.getElementById('auth-screen').classList.remove('hidden');
+      return;
+    }
+    try {
+      const user = await loadFirebaseUser(firebaseUser);
+      appState.users[firebaseUser.uid] = user;
+      appState.currentUser = firebaseUser.uid;
+      window.showAppShell();
+    } catch (err) {
+      console.error('Unable to load Firebase user:', err);
+      showAuthError('Unable to load your account data. Please refresh and try again.');
+    }
+  });
+});
+// Keep the profile page synchronized with the authenticated account.
+const originalShowAppShell = window.showAppShell || showAppShell;
+window.showAppShell = function() {
+  originalShowAppShell();
+  const u = appState.users[appState.currentUser];
+  if (u) {
+    const emailEl = document.getElementById('profile-email');
+    const nameEl = document.getElementById('profile-name');
+    const postEl = document.getElementById('profile-post');
+    if (emailEl) emailEl.value = u.email || '';
+    if (nameEl) nameEl.value = u.name || '';
+    if (postEl) postEl.value = u.targetPost || 'LDC';
+  }
+};
+
+// Replace direct global calls with the Firebase-aware wrapper.
+window.__chslFirebaseVersion = '1.0';
+
+</script>
+
 </body>
 </html>
