@@ -1014,7 +1014,13 @@
             const subject = [...(SYLLABUS_TIER1 || []), ...(SYLLABUS_TIER2 || [])].find(s => s.id === subjectId);
             const subjectName = subject?.name || '';
             const tierFolder = String(subjectId || '').startsWith('tier2_') ? 'tier2' : 'tier1';
-            const topicPath = `notes/${tierFolder}/${slugifyTopic(subjectId)}/${slugifyTopic(topicName)}.html`;
+            const NOTE_FILE_MAP = {
+                'reasoning|Semantic Analogy': 'notes/reasoning/semantic-analogy.html',
+                'reasoning|Symbolic/Number Analogy': 'notes/reasoning/symbolic-number-analogy.html',
+                'reasoning|Figural Analogy': 'notes/reasoning/figural-analogy.html',
+                'reasoning|Semantic Classification': 'notes/reasoning/semantic-classification.html'
+            };
+            const topicPath = NOTE_FILE_MAP[`${subjectId}|${topicName}`] || `notes/${tierFolder}/${slugifyTopic(subjectId)}/${slugifyTopic(topicName)}.html`;
             document.getElementById('notes-title').textContent = topicName || 'Topic Notes';
             document.getElementById('notes-subtitle').textContent = subjectName ? `${subjectName} • CHSL-focused study notes` : 'CHSL-focused study notes';
             document.getElementById('notes-topic-label').textContent = topicName || 'Notes';
