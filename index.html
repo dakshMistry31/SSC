@@ -152,8 +152,8 @@
         .ai-modal-content { scrollbar-gutter: stable; }
 
         /* Typing Test */
-        .typing-layout { display:grid; grid-template-columns:minmax(0,1fr) 320px; gap:1.5rem; }
-        .typing-card { background:var(--bg-card); border:1px solid var(--border-color); border-radius:var(--radius-lg); padding:1.5rem; box-shadow:var(--shadow-sm); }
+        .typing-layout { display:grid; grid-template-columns:minmax(0,1fr) 320px; gap:1.5rem; width:100%; max-width:100%; min-width:0; }
+        .typing-card { background:var(--bg-card); border:1px solid var(--border-color); border-radius:var(--radius-lg); padding:1.5rem; box-shadow:var(--shadow-sm); min-width:0; max-width:100%; box-sizing:border-box; }
         .typing-modes { display:grid; grid-template-columns:repeat(3,1fr); gap:.75rem; margin-bottom:1.25rem; }
         .typing-mode-btn { border:1px solid var(--border-color); border-radius:var(--radius-md); padding:.8rem .75rem; color:var(--text-main); background:var(--bg-body); font-weight:700; transition:var(--transition); }
         .typing-mode-btn:hover,.typing-mode-btn.active { border-color:var(--primary); background:var(--primary-light); color:var(--primary); }
@@ -162,11 +162,11 @@
         .typing-stat-value { font-size:1.45rem; font-weight:800; }
         .typing-stat-label { font-size:.72rem; color:var(--text-muted); text-transform:uppercase; font-weight:700; margin-top:.15rem; }
         .typing-timer { font-size:2rem; font-weight:800; color:var(--primary); text-align:center; margin:.25rem 0 1rem; }
-        .typing-passage { border:1px solid var(--border-color); border-radius:var(--radius-md); padding:1rem; min-height:150px; line-height:1.8; font-size:1.05rem; user-select:none; background:var(--bg-body); margin-bottom:1rem; }
+        .typing-passage { border:1px solid var(--border-color); border-radius:var(--radius-md); padding:1rem; min-height:150px; max-height:300px; width:100%; max-width:100%; box-sizing:border-box; line-height:1.8; font-size:1.05rem; user-select:none; background:var(--bg-body); margin-bottom:1rem; overflow-x:hidden; overflow-y:auto; white-space:normal; overflow-wrap:anywhere; word-break:normal; }
         .typing-passage .typed-correct { color:var(--success); }
         .typing-passage .typed-wrong { color:var(--danger); background:var(--danger-light); border-radius:2px; }
         .typing-passage .current-char { background:var(--primary); color:white; border-radius:2px; box-shadow:0 0 0 2px rgba(79,70,229,.15); }
-        .typing-input { width:100%; min-height:120px; resize:vertical; padding:1rem; border:1px solid var(--border-color); border-radius:var(--radius-md); background:var(--bg-card); color:var(--text-main); line-height:1.6; }
+        .typing-input { width:100%; max-width:100%; box-sizing:border-box; min-height:120px; resize:vertical; padding:1rem; border:1px solid var(--border-color); border-radius:var(--radius-md); background:var(--bg-card); color:var(--text-main); line-height:1.6; overflow-wrap:anywhere; }
         .typing-input:focus { border-color:var(--primary); outline:none; box-shadow:0 0 0 3px rgba(79,70,229,.12); }
         .typing-record { display:flex; justify-content:space-between; gap:.75rem; align-items:center; padding:.75rem 0; border-bottom:1px solid var(--border-color); }
         .typing-record:last-child { border-bottom:0; }
@@ -175,7 +175,7 @@
         .typing-live-record { padding:.75rem 1rem; border-radius:var(--radius-md); background:var(--success-light); color:var(--success); font-size:.875rem; margin-bottom:1rem; display:none; }
         .typing-controls { display:flex; gap:.75rem; flex-wrap:wrap; }
         @media(max-width:900px){ .typing-layout{grid-template-columns:1fr;} }
-        @media(max-width:600px){ .typing-card{padding:1rem;} .typing-modes{grid-template-columns:1fr;gap:.5rem;} .typing-stats{grid-template-columns:repeat(2,1fr);} .typing-passage{font-size:.98rem;min-height:130px;line-height:1.7;} .typing-controls .btn-primary{width:100% !important;} }
+        @media(max-width:600px){ .typing-layout{width:100%;max-width:100%;} .typing-card{padding:1rem;width:100%;max-width:100%;} .typing-modes{grid-template-columns:1fr;gap:.5rem;} .typing-stats{grid-template-columns:repeat(2,1fr);} .typing-passage{font-size:.98rem;min-height:130px;max-height:260px;line-height:1.7;padding:.85rem;overflow-x:hidden;overflow-y:auto;overflow-wrap:anywhere;} .typing-input{font-size:16px;min-height:120px;} .typing-controls .btn-primary{width:100% !important;} }
 
         @media (max-width: 900px) {
             .dashboard-grid, .quiz-shell { grid-template-columns: 1fr; }
