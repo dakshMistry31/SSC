@@ -787,6 +787,11 @@
             quizTimerId: null
         };
 
+        // Expose the shared application state to the Firebase ES module below.
+        // `let` bindings are not properties of window, so this must be assigned
+        // explicitly before the module tries to bridge into the classic script.
+        window.appState = appState;
+
         function loadState() {
             // Firebase Authentication + Firestore are the permanent source of truth.
             // No user credentials or progress are loaded from localStorage.
