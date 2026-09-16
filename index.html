@@ -241,6 +241,7 @@
                     </label>
                 </div>
                 <button type="submit" class="btn-primary">Sign In</button>
+                <button type="button" class="btn-primary" style="margin-top:.6rem;background:transparent;color:var(--primary);border:1px solid var(--border-color);" onclick="resetPasswordFromLogin()">Forgot Password? Send Reset Email</button>
             </form>
 
             <!-- Register Form -->
@@ -1115,14 +1116,14 @@
 
                 if (appState.currentQuiz.timeLeft <= 0) {
                     clearInterval(appState.quizTimerId);
-                    submitQuiz();
+                    window.submitQuiz();
                 }
             }, 1000);
         }
 
         function confirmSubmitQuiz() {
             if (confirm("Are you sure you want to submit the test?")) {
-                submitQuiz();
+                window.submitQuiz();
             }
         }
 
@@ -1206,7 +1207,7 @@
         }
 
         function startRevisionQuiz(count) {
-            startTopicQuiz('maths', `Revision Target Set (${count} Qs)`);
+            if (window.startTopicQuiz) window.startTopicQuiz('maths', `Revision Target Set (${count} Qs)`);
         }
 
         function renderBookmarks() {
@@ -1325,12 +1326,21 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import {
   getAuth, onAuthStateChanged, createUserWithEmailAndPassword,
-  signInWithEmailAndPassword, signOut, updateProfile
+  signInWithEmailAndPassword, signOut, updateProfile, sendPasswordResetEmail,
+  setPersistence, browserLocalPersistence
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import {
   getFirestore, doc, getDoc, setDoc, collection, addDoc,
   serverTimestamp, query, orderBy, getDocs
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+// Bridge the classic-script application state/functions into this ES module.
+// Top-level `let`/function bindings from a classic script are not directly
+// visible inside an ES module, so all Firebase/typing/AI code uses these aliases.
+const appState = window.appState;
+const showAppShell = window.showAppShell;
+const navigateTo = window.navigateTo;
+const switchAuthTab = window.switchAuthTab;
 
 const firebaseConfig = {
   apiKey: "AIzaSyD_TzDY6QJuL7Du8baTvFeHFeCMnIux7RI",
@@ -1344,6 +1354,9 @@ const firebaseConfig = {
 const firebaseApp = initializeApp(firebaseConfig);
 const auth = getAuth(firebaseApp);
 const db = getFirestore(firebaseApp);
+const authPersistenceReady = setPersistence(auth, browserLocalPersistence).catch((error) => {
+  console.warn('Firebase persistence setup failed:', error);
+});
 
 window.firebaseReady = true;
 window.firebaseAuth = auth;
@@ -1437,6 +1450,7 @@ window.handleRegister = async function(e) {
   if (password.length < 6) return showAuthError('Password must be at least 6 characters.');
 
   try {
+    await authPersistenceReady;
     const cred = await createUserWithEmailAndPassword(auth, email, password);
     await updateProfile(cred.user, { displayName: name });
     const user = {
@@ -1464,11 +1478,23 @@ window.handleLogin = async function(e) {
   const email = document.getElementById('login-username').value.trim().toLowerCase();
   const password = document.getElementById('login-password').value;
   try {
+    await authPersistenceReady;
     const cred = await signInWithEmailAndPassword(auth, email, password);
     const user = await loadFirebaseUser(cred.user);
     appState.users[cred.user.uid] = user;
     appState.currentUser = cred.user.uid;
     window.showAppShell();
+  } catch (error) {
+    showAuthError(friendlyAuthError(error));
+  }
+};
+
+window.resetPasswordFromLogin = async function() {
+  const email = document.getElementById('login-username')?.value.trim().toLowerCase();
+  if (!email) return showAuthError('Enter your email address first, then click Forgot Password.');
+  try {
+    await sendPasswordResetEmail(auth, email);
+    showAuthError('Password reset email sent. Check your inbox (and spam folder).', true);
   } catch (error) {
     showAuthError(friendlyAuthError(error));
   }
@@ -1583,8 +1609,29 @@ window.showAppShell = function() {
   }
 };
 
-/* ==========================================================================\n   TYPING TEST - SSC CHSL TIER-II\n   ========================================================================== */\nconst TYPING_PASSAGES=["The ability to type accurately and quickly is an important skill for computer based examinations. Regular practice improves speed, accuracy, confidence, and familiarity with the keyboard.","Time management is essential during competitive examinations. A calm approach, careful reading, and consistent practice can help candidates complete tasks accurately within the available time.","Government offices depend on accurate digital records and efficient communication. Good typing skills help staff enter information, prepare documents, and complete routine computer based work efficiently.","Daily practice is more useful than occasional long sessions. Focus on accuracy first, then gradually increase speed while maintaining correct spelling, punctuation, spacing, and rhythm.","A disciplined learner tracks progress, identifies repeated mistakes, and practices weak areas. Small improvements made consistently can produce a significant increase in typing performance over time."];\nlet typingState={duration:1,passage:'',started:false,finished:false,startTime:0,elapsedMs:0,timerId:null,lastWpm:0,correctChars:0,errors:0};\nfunction getTypingStats(){const u=appState.users[appState.currentUser];if(!u)return{best1:0,best5:0,best10:0,totalTests:0};u.typingStats=u.typingStats||{best1:0,best5:0,best10:0,totalTests:0};const t=u.typingStats;t.best1=Number(t.best1)||0;t.best5=Number(t.best5)||0;t.best10=Number(t.best10)||0;t.totalTests=Number(t.totalTests)||0;return t;}\nfunction updateTypingRecordsUI(){const t=getTypingStats();const a=document.getElementById('typing-record-1'),b=document.getElementById('typing-record-5'),c=document.getElementById('typing-record-10'),d=document.getElementById('typing-tests-count');if(a)a.textContent=`${t.best1} WPM`;if(b)b.textContent=`${t.best5} WPM`;if(c)c.textContent=`${t.best10} WPM`;if(d)d.textContent=String(t.totalTests);}\nfunction formatTypingTime(seconds){const s=Math.max(0,Math.ceil(seconds)),m=Math.floor(s/60),sec=s%60;return`${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;}\nfunction selectTypingDuration(minutes){if(typingState.started&&!typingState.finished)return;typingState.duration=minutes;[1,5,10].forEach(m=>document.getElementById(`typing-mode-${m}`)?.classList.toggle('active',m===minutes));resetTypingTest(false);}\nfunction newTypingPassage(){const shuffled=[...TYPING_PASSAGES].sort(()=>Math.random()-.5);let text='';while(text.length<2200)text+=(text?' ':'')+shuffled[Math.floor(Math.random()*shuffled.length)];return text;}\nfunction renderTypingPassage(){const el=document.getElementById('typing-passage');if(!el)return;const typed=document.getElementById('typing-input')?.value||'';el.innerHTML=[...typingState.passage].map((ch,i)=>{const cls=i<typed.length?(typed[i]===ch?'typed-correct':'typed-wrong'):(i===typed.length?'current-char':'');const safe=ch===' '?'&nbsp;':ch.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');return`<span class="${cls}">${safe}</span>`;}).join('');}\nfunction calculateTypingMetrics(){const input=document.getElementById('typing-input')?.value||'',elapsedMinutes=Math.max((typingState.elapsedMs||0)/60000,1/60);let correct=0,errors=0;for(let i=0;i<input.length;i++){if(input[i]===typingState.passage[i])correct++;else errors++;}return{input,correct,errors,wpm:Math.max(0,Math.round((correct/5)/elapsedMinutes)),accuracy:input.length?Math.round(correct/input.length*100):100};}\nlet typingRecordSaveTimer=null;
-async function persistTypingRecordIfNeeded(wpm){const u=appState.users[appState.currentUser];if(!u)return;const t=getTypingStats(),key=typingState.duration===1?'best1':typingState.duration===5?'best5':'best10';if(wpm>t[key]){t[key]=wpm;updateTypingRecordsUI();const live=document.getElementById('typing-live-record');if(live){live.textContent=`New lifetime record! ${wpm} WPM (${typingState.duration}-minute test)`;live.style.display='block';}clearTimeout(typingRecordSaveTimer);typingRecordSaveTimer=setTimeout(()=>{if(window.cloudSaveCurrentUser)window.cloudSaveCurrentUser().catch(e=>console.warn('Typing record save failed:',e));},1200);}}}\nfunction updateTypingLiveMetrics(){if(!typingState.started||typingState.finished)return;typingState.elapsedMs=Math.min(Date.now()-typingState.startTime,typingState.duration*60000);const m=calculateTypingMetrics();typingState.lastWpm=m.wpm;typingState.correctChars=m.correct;typingState.errors=m.errors;document.getElementById('typing-current-wpm').textContent=m.wpm;document.getElementById('typing-accuracy').textContent=`${m.accuracy}%`;document.getElementById('typing-errors').textContent=m.errors;document.getElementById('typing-timer').textContent=formatTypingTime((typingState.duration*60000-typingState.elapsedMs)/1000);persistTypingRecordIfNeeded(m.wpm);if(typingState.elapsedMs>=typingState.duration*60000)finishTypingTest();}\nfunction startTypingTest(){if(typingState.started&&!typingState.finished)return;clearInterval(typingState.timerId);typingState.passage=newTypingPassage();typingState.started=true;typingState.finished=false;typingState.elapsedMs=0;typingState.startTime=Date.now();typingState.lastWpm=0;typingState.correctChars=0;typingState.errors=0;const input=document.getElementById('typing-input');input.value='';input.disabled=false;input.focus();document.getElementById('typing-result')?.classList.add('hidden');document.getElementById('typing-live-record').style.display='none';document.getElementById('typing-start-btn').innerHTML='<i class="fa-solid fa-keyboard"></i> Test Running…';document.getElementById('typing-start-btn').disabled=true;renderTypingPassage();typingState.timerId=setInterval(updateTypingLiveMetrics,250);updateTypingLiveMetrics();}\nasync function finishTypingTest(){if(!typingState.started||typingState.finished)return;typingState.finished=true;clearInterval(typingState.timerId);typingState.elapsedMs=typingState.duration*60000;const m=calculateTypingMetrics(),t=getTypingStats(),key=typingState.duration===1?'best1':typingState.duration===5?'best5':'best10';const newRecord=m.wpm>t[key];if(newRecord)t[key]=m.wpm;t.totalTests++;updateTypingRecordsUI();document.getElementById('typing-input').disabled=true;document.getElementById('typing-start-btn').disabled=false;document.getElementById('typing-start-btn').innerHTML='<i class="fa-solid fa-play"></i> Start New Test';document.getElementById('typing-timer').textContent='00:00';document.getElementById('typing-current-wpm').textContent=m.wpm;document.getElementById('typing-accuracy').textContent=`${m.accuracy}%`;document.getElementById('typing-errors').textContent=m.errors;renderTypingPassage();const result=document.getElementById('typing-result');result.classList.remove('hidden');result.textContent=`${m.wpm} WPM • ${m.accuracy}% accuracy • ${m.correct} correct characters • ${m.errors} errors${newRecord?' • New lifetime record!':''}`;result.style.background=newRecord?'var(--success-light)':'var(--primary-light)';result.style.color=newRecord?'var(--success)':'var(--text-main)';if(window.cloudSaveCurrentUser){try{await window.cloudSaveCurrentUser();}catch(e){console.warn('Typing stats save failed:',e);}}try{if(window.saveTypingAttempt)await window.saveTypingAttempt({durationMinutes:typingState.duration,wpm:m.wpm,accuracy:m.accuracy,correctCharacters:m.correct,errors:m.errors,completedAt:new Date().toISOString()});}catch(e){console.warn('Typing attempt history save failed:',e);}}\nfunction resetTypingTest(randomize=true){clearInterval(typingState.timerId);typingState.started=false;typingState.finished=false;typingState.elapsedMs=0;typingState.startTime=0;typingState.lastWpm=0;typingState.correctChars=0;typingState.errors=0;if(randomize||!typingState.passage)typingState.passage=newTypingPassage();const input=document.getElementById('typing-input');if(input){input.value='';input.disabled=true;}const btn=document.getElementById('typing-start-btn');if(btn){btn.disabled=false;btn.innerHTML='<i class="fa-solid fa-play"></i> Start Test';}document.getElementById('typing-timer').textContent=formatTypingTime(typingState.duration*60);document.getElementById('typing-current-wpm').textContent='0';document.getElementById('typing-accuracy').textContent='100%';document.getElementById('typing-errors').textContent='0';document.getElementById('typing-live-record').style.display='none';document.getElementById('typing-result')?.classList.add('hidden');renderTypingPassage();updateTypingRecordsUI();}\nconst typingInputEl=document.getElementById('typing-input');if(typingInputEl)typingInputEl.addEventListener('input',()=>{if(!typingState.started||typingState.finished)return;if(typingInputEl.value.length>typingState.passage.length)typingInputEl.value=typingInputEl.value.slice(0,typingState.passage.length);updateTypingLiveMetrics();renderTypingPassage();});\nconst originalNavigateToForTyping=window.navigateTo||navigateTo;window.navigateTo=function(pageId){if(pageId!=='typing-test'&&typingState.started&&!typingState.finished){clearInterval(typingState.timerId);typingState.started=false;typingState.finished=false;}originalNavigateToForTyping(pageId);if(pageId==='typing-test'){getTypingStats();updateTypingRecordsUI();if(!typingState.passage)resetTypingTest();}};\nwindow.selectTypingDuration=selectTypingDuration;window.startTypingTest=startTypingTest;window.finishTypingTest=finishTypingTest;window.resetTypingTest=resetTypingTest;\n\n/* ==========================================================================
+/* ==========================================================================
+   TYPING TEST - SSC CHSL TIER-II
+   ========================================================================== */
+const TYPING_PASSAGES=["The ability to type accurately and quickly is an important skill for computer based examinations. Regular practice improves speed, accuracy, confidence, and familiarity with the keyboard.","Time management is essential during competitive examinations. A calm approach, careful reading, and consistent practice can help candidates complete tasks accurately within the available time.","Government offices depend on accurate digital records and efficient communication. Good typing skills help staff enter information, prepare documents, and complete routine computer based work efficiently.","Daily practice is more useful than occasional long sessions. Focus on accuracy first, then gradually increase speed while maintaining correct spelling, punctuation, spacing, and rhythm.","A disciplined learner tracks progress, identifies repeated mistakes, and practices weak areas. Small improvements made consistently can produce a significant increase in typing performance over time."];
+let typingState={duration:1,passage:'',started:false,finished:false,startTime:0,elapsedMs:0,timerId:null,lastWpm:0,correctChars:0,errors:0};
+function getTypingStats(){const u=appState.users[appState.currentUser];if(!u)return{best1:0,best5:0,best10:0,totalTests:0};u.typingStats=u.typingStats||{best1:0,best5:0,best10:0,totalTests:0};const t=u.typingStats;t.best1=Number(t.best1)||0;t.best5=Number(t.best5)||0;t.best10=Number(t.best10)||0;t.totalTests=Number(t.totalTests)||0;return t;}
+function updateTypingRecordsUI(){const t=getTypingStats();const a=document.getElementById('typing-record-1'),b=document.getElementById('typing-record-5'),c=document.getElementById('typing-record-10'),d=document.getElementById('typing-tests-count');if(a)a.textContent=`${t.best1} WPM`;if(b)b.textContent=`${t.best5} WPM`;if(c)c.textContent=`${t.best10} WPM`;if(d)d.textContent=String(t.totalTests);}
+function formatTypingTime(seconds){const s=Math.max(0,Math.ceil(seconds)),m=Math.floor(s/60),sec=s%60;return`${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;}
+function selectTypingDuration(minutes){if(typingState.started&&!typingState.finished)return;typingState.duration=minutes;[1,5,10].forEach(m=>document.getElementById(`typing-mode-${m}`)?.classList.toggle('active',m===minutes));resetTypingTest(false);}
+function newTypingPassage(){const shuffled=[...TYPING_PASSAGES].sort(()=>Math.random()-.5);let text='';while(text.length<2200)text+=(text?' ':'')+shuffled[Math.floor(Math.random()*shuffled.length)];return text;}
+function renderTypingPassage(){const el=document.getElementById('typing-passage');if(!el)return;const typed=document.getElementById('typing-input')?.value||'';el.innerHTML=[...typingState.passage].map((ch,i)=>{const cls=i<typed.length?(typed[i]===ch?'typed-correct':'typed-wrong'):(i===typed.length?'current-char':'');const safe=ch===' '?'&nbsp;':ch.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');return`<span class="${cls}">${safe}</span>`;}).join('');}
+function calculateTypingMetrics(){const input=document.getElementById('typing-input')?.value||'',elapsedMinutes=Math.max((typingState.elapsedMs||0)/60000,1/60);let correct=0,errors=0;for(let i=0;i<input.length;i++){if(input[i]===typingState.passage[i])correct++;else errors++;}return{input,correct,errors,wpm:Math.max(0,Math.round((correct/5)/elapsedMinutes)),accuracy:input.length?Math.round(correct/input.length*100):100};}
+let typingRecordSaveTimer=null;
+async function persistTypingRecordIfNeeded(wpm){const u=appState.users[appState.currentUser];if(!u)return;const t=getTypingStats(),key=typingState.duration===1?'best1':typingState.duration===5?'best5':'best10';if(wpm>t[key]){t[key]=wpm;updateTypingRecordsUI();const live=document.getElementById('typing-live-record');if(live){live.textContent=`New lifetime record! ${wpm} WPM (${typingState.duration}-minute test)`;live.style.display='block';}clearTimeout(typingRecordSaveTimer);typingRecordSaveTimer=setTimeout(()=>{if(window.cloudSaveCurrentUser)window.cloudSaveCurrentUser().catch(e=>console.warn('Typing record save failed:',e));},1200);}}
+function updateTypingLiveMetrics(){if(!typingState.started||typingState.finished)return;typingState.elapsedMs=Math.min(Date.now()-typingState.startTime,typingState.duration*60000);const m=calculateTypingMetrics();typingState.lastWpm=m.wpm;typingState.correctChars=m.correct;typingState.errors=m.errors;document.getElementById('typing-current-wpm').textContent=m.wpm;document.getElementById('typing-accuracy').textContent=`${m.accuracy}%`;document.getElementById('typing-errors').textContent=m.errors;document.getElementById('typing-timer').textContent=formatTypingTime((typingState.duration*60000-typingState.elapsedMs)/1000);persistTypingRecordIfNeeded(m.wpm);if(typingState.elapsedMs>=typingState.duration*60000)finishTypingTest();}
+function startTypingTest(){if(typingState.started&&!typingState.finished)return;clearInterval(typingState.timerId);typingState.passage=newTypingPassage();typingState.started=true;typingState.finished=false;typingState.elapsedMs=0;typingState.startTime=Date.now();typingState.lastWpm=0;typingState.correctChars=0;typingState.errors=0;const input=document.getElementById('typing-input');input.value='';input.disabled=false;input.focus();document.getElementById('typing-result')?.classList.add('hidden');document.getElementById('typing-live-record').style.display='none';document.getElementById('typing-start-btn').innerHTML='<i class="fa-solid fa-keyboard"></i> Test Running…';document.getElementById('typing-start-btn').disabled=true;renderTypingPassage();typingState.timerId=setInterval(updateTypingLiveMetrics,250);updateTypingLiveMetrics();}
+async function finishTypingTest(){if(!typingState.started||typingState.finished)return;typingState.finished=true;clearInterval(typingState.timerId);typingState.elapsedMs=typingState.duration*60000;const m=calculateTypingMetrics(),t=getTypingStats(),key=typingState.duration===1?'best1':typingState.duration===5?'best5':'best10';const newRecord=m.wpm>t[key];if(newRecord)t[key]=m.wpm;t.totalTests++;updateTypingRecordsUI();document.getElementById('typing-input').disabled=true;document.getElementById('typing-start-btn').disabled=false;document.getElementById('typing-start-btn').innerHTML='<i class="fa-solid fa-play"></i> Start New Test';document.getElementById('typing-timer').textContent='00:00';document.getElementById('typing-current-wpm').textContent=m.wpm;document.getElementById('typing-accuracy').textContent=`${m.accuracy}%`;document.getElementById('typing-errors').textContent=m.errors;renderTypingPassage();const result=document.getElementById('typing-result');result.classList.remove('hidden');result.textContent=`${m.wpm} WPM • ${m.accuracy}% accuracy • ${m.correct} correct characters • ${m.errors} errors${newRecord?' • New lifetime record!':''}`;result.style.background=newRecord?'var(--success-light)':'var(--primary-light)';result.style.color=newRecord?'var(--success)':'var(--text-main)';if(window.cloudSaveCurrentUser){try{await window.cloudSaveCurrentUser();}catch(e){console.warn('Typing stats save failed:',e);}}try{if(window.saveTypingAttempt)await window.saveTypingAttempt({durationMinutes:typingState.duration,wpm:m.wpm,accuracy:m.accuracy,correctCharacters:m.correct,errors:m.errors,completedAt:new Date().toISOString()});}catch(e){console.warn('Typing attempt history save failed:',e);}}
+function resetTypingTest(randomize=true){clearInterval(typingState.timerId);typingState.started=false;typingState.finished=false;typingState.elapsedMs=0;typingState.startTime=0;typingState.lastWpm=0;typingState.correctChars=0;typingState.errors=0;if(randomize||!typingState.passage)typingState.passage=newTypingPassage();const input=document.getElementById('typing-input');if(input){input.value='';input.disabled=true;}const btn=document.getElementById('typing-start-btn');if(btn){btn.disabled=false;btn.innerHTML='<i class="fa-solid fa-play"></i> Start Test';}document.getElementById('typing-timer').textContent=formatTypingTime(typingState.duration*60);document.getElementById('typing-current-wpm').textContent='0';document.getElementById('typing-accuracy').textContent='100%';document.getElementById('typing-errors').textContent='0';document.getElementById('typing-live-record').style.display='none';document.getElementById('typing-result')?.classList.add('hidden');renderTypingPassage();updateTypingRecordsUI();}
+const typingInputEl=document.getElementById('typing-input');if(typingInputEl)typingInputEl.addEventListener('input',()=>{if(!typingState.started||typingState.finished)return;if(typingInputEl.value.length>typingState.passage.length)typingInputEl.value=typingInputEl.value.slice(0,typingState.passage.length);updateTypingLiveMetrics();renderTypingPassage();});
+const originalNavigateToForTyping=window.navigateTo||navigateTo;window.navigateTo=function(pageId){if(pageId!=='typing-test'&&typingState.started&&!typingState.finished){clearInterval(typingState.timerId);typingState.started=false;typingState.finished=false;}originalNavigateToForTyping(pageId);if(pageId==='typing-test'){getTypingStats();updateTypingRecordsUI();if(!typingState.passage)resetTypingTest();}};
+window.selectTypingDuration=selectTypingDuration;window.startTypingTest=startTypingTest;window.finishTypingTest=finishTypingTest;window.resetTypingTest=resetTypingTest;
+
+/* ==========================================================================
    PHASE 3 - AI TEST ENGINE
    The browser never stores the Gemini API key. It sends the Firebase ID token
    to a separate AI backend, which verifies the user and calls Gemini.
