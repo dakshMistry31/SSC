@@ -1,0 +1,76 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>Interest — Simple & Compound | CHSL Mastery</title>
+<style>
+:root{--p:#2563eb;--bg:#f8fafc;--card:#fff;--text:#172033;--muted:#5b6475;--border:#dbe2ea;--soft:#eff6ff;--warn:#fff7ed;--good:#f0fdf4}
+*{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,Arial,sans-serif;line-height:1.65}
+main{max-width:900px;margin:auto;padding:22px 16px 50px}.hero{background:linear-gradient(135deg,#1d4ed8,#2563eb);color:white;border-radius:20px;padding:28px 24px;margin-bottom:18px}
+.hero h1{margin:0 0 6px;font-size:clamp(1.7rem,5vw,2.4rem)}.hero p{margin:0;opacity:.92}
+section{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:20px;margin:14px 0}
+h2{font-size:1.25rem;margin:0 0 12px;color:#1d4ed8}h3{font-size:1.05rem;margin:18px 0 7px}
+.formula{background:var(--soft);border-left:4px solid var(--p);padding:12px 14px;border-radius:8px;margin:10px 0;font-weight:600;overflow-x:auto}
+.example{background:var(--good);border:1px solid #bbf7d0;padding:14px;border-radius:10px;margin:10px 0}
+.warning{background:var(--warn);border:1px solid #fed7aa;padding:14px;border-radius:10px;margin:10px 0}
+ul,ol{padding-left:22px}table{width:100%;border-collapse:collapse;margin:10px 0;font-size:.95rem}
+th,td{border:1px solid var(--border);padding:9px;text-align:left;vertical-align:top}th{background:#f1f5f9}
+.ai{display:inline-block;background:#111827;color:white;text-decoration:none;padding:11px 16px;border-radius:10px;font-weight:700;margin-top:6px}
+.small{color:var(--muted);font-size:.92rem}
+@media(max-width:600px){main{padding:12px 10px 35px}.hero,section{padding:16px}.hero{border-radius:15px}table{font-size:.86rem}}
+</style>
+</head>
+<body><main><div class="hero"><h1>Interest — Simple & Compound</h1><p>SSC CHSL Quantitative Aptitude — Topic Notes</p></div>
+<section><h2>📖 1. Basic Terms</h2>
+<p><strong>Principal (P):</strong> Original amount invested or borrowed.</p>
+<p><strong>Rate (R):</strong> Interest rate per year, usually expressed as a percentage.</p>
+<p><strong>Time (T):</strong> Duration for which money is invested or borrowed.</p>
+<p><strong>Amount (A):</strong> Principal + Interest.</p></section>
+
+<section><h2>🧮 2. Simple Interest</h2>
+<div class="formula">SI = (P × R × T)/100</div>
+<div class="formula">Amount = P + SI</div>
+<div class="example"><strong>Example 1:</strong> Find SI on ₹5,000 at 8% p.a. for 2 years.<br>SI = 5000×8×2/100 = <strong>₹800</strong>; Amount = <strong>₹5,800</strong>.</div>
+<div class="example"><strong>Example 2:</strong> Find SI on ₹12,000 at 5% for 3 years.<br>SI = 12000×5×3/100 = <strong>₹1,800</strong>.</div>
+<div class="example"><strong>Example 3:</strong> SI is ₹900 on ₹6,000 for 3 years. Find the rate.<br>R = 900×100/(6000×3) = <strong>5%</strong>.</div></section>
+
+<section><h2>⏱️ 3. Time and Rate Variations</h2>
+<p>For simple interest, interest is directly proportional to P, R and T.</p>
+<div class="example"><strong>Example 1:</strong> If the principal doubles while rate and time stay fixed, SI <strong>doubles</strong>.</div>
+<div class="example"><strong>Example 2:</strong> If time changes from 2 to 5 years with everything else fixed, SI becomes <strong>2.5 times</strong>.</div>
+<div class="example"><strong>Example 3:</strong> If rate falls from 10% to 8%, SI falls in the ratio 10:8 = <strong>5:4</strong>.</div></section>
+
+<section><h2>📈 4. Compound Interest</h2>
+<p>In compound interest, interest is added to the amount at the end of each compounding period, so the next period's interest is calculated on the increased amount.</p>
+<div class="formula">A = P(1 + R/100)ᵀ</div>
+<div class="formula">CI = A − P</div>
+<div class="example"><strong>Example 1:</strong> ₹10,000 at 10% p.a. compounded annually for 2 years.<br>A = 10,000×1.1² = ₹12,100. CI = <strong>₹2,100</strong>.</div>
+<div class="example"><strong>Example 2:</strong> ₹8,000 at 5% p.a. for 2 years.<br>A = 8000×1.05² = ₹8,820. CI = <strong>₹820</strong>.</div>
+</section>
+
+<section><h2>🔁 5. Compound Interest for Two Years</h2>
+<div class="formula">CI = P[(1+R/100)² − 1]</div>
+<div class="formula">For two years, CI − SI = P(R/100)²</div>
+<div class="example"><strong>Example 1:</strong> P=₹5,000, R=10%, T=2. Difference = 5000×(10/100)² = <strong>₹50</strong>.</div>
+<div class="example"><strong>Example 2:</strong> P=₹20,000, R=5%, T=2. Difference = 20,000×(0.05)² = <strong>₹50</strong>.</div></section>
+
+<section><h2>📅 6. Half-Yearly Compounding</h2>
+<p>If interest is compounded half-yearly, use half the annual rate and twice the number of periods.</p>
+<div class="formula">A = P(1 + R/200)^(2T)</div>
+<div class="example"><strong>Example:</strong> ₹10,000 at 10% p.a. compounded half-yearly for 1 year.<br>Rate per half-year = 5%; periods = 2. A = 10,000×1.05² = <strong>₹11,025</strong>.</div>
+</section>
+
+<section><h2>🛠️ 7. Comparing SI and CI</h2>
+<table><tr><th>Simple Interest</th><th>Compound Interest</th></tr>
+<tr><td>Interest is calculated on original principal.</td><td>Interest is calculated on accumulated amount.</td></tr>
+<tr><td>SI = PRT/100.</td><td>A = P(1+R/100)^T for annual compounding.</td></tr>
+<tr><td>Grows linearly with time at a fixed rate.</td><td>Grows through compounding.</td></tr></table>
+</section>
+
+<section><h2>⚠️ 8. Common Mistakes</h2>
+<ul><li>Using the compound formula for a simple-interest question.</li><li>For half-yearly compounding, forgetting to halve the rate and double the number of periods.</li><li>Confusing interest with amount.</li><li>Using the percentage rate as a whole number instead of R/100 in formulas.</li></ul></section>
+
+<section><h2>📌 9. CHSL Focus</h2>
+<p>SSC CHSL explicitly includes Interest (Simple and Compound). citeturn0search8 Focus on direct SI/CI calculations, amount, rate/time/principal finding, and common annual or half-yearly compounding cases.</p></section>
+
+<section><h2>🔄 10. Quick Revision</h2>
+<ul><li>SI = PRT/100.</li><li>Amount = P + Interest.</li><li>CI = Amount − P.</li><li>For annual CI: A = P(1+R/100)^T.</li><li>Half-yearly: rate ÷ 2, periods × 2.</li><li>For two years, CI−SI = P(R/100)².</li></ul>
+<a class="ai" href="../../index.html#ai-test-lab">🤖 Practice this topic with AI</a></section>
+</main></body></html>
