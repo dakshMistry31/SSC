@@ -214,21 +214,32 @@ Use weak-topic information only to make practice useful; do not mention the user
 
 async function generateWithGemini(prompt, env) {
   if (!env.GEMINI_API_KEY) throw new Error("GEMINI_API_KEY is not configured.");
-  const response = await fetch(`${GEMINI_URL}?key=${encodeURIComponent(env.GEMINI_API_KEY)}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      systemInstruction: {
-        parts: [{ text: "You output only structured JSON for a secure exam-question API. Follow the requested schema exactly." }]
-      },
-      contents: [{ role: "user", parts: [{ text: prompt }] }],
-      generationConfig: {
-        maxOutputTokens: 14000,
-        responseMimeType: "application/json",
-        responseSchema: JSON_SCHEMA
-      }
-    })
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 50000);
+  let response;
+  try {
+    response = await fetch(`${GEMINI_URL}?key=${encodeURIComponent(env.GEMINI_API_KEY)}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      signal: controller.signal,
+      body: JSON.stringify({
+        systemInstruction: {
+          parts: [{ text: "You output only structured JSON for a secure exam-question API. Follow the requested schema exactly. Keep explanations concise so the complete test can be returned quickly." }]
+        },
+        contents: [{ role: "user", parts: [{ text: prompt }] }],
+        generationConfig: {
+          maxOutputTokens: 12000,
+          responseMimeType: "application/json",
+          responseSchema: JSON_SCHEMA
+        }
+      })
+    });
+  } catch (error) {
+    if (error?.name === "AbortError") throw new Error("AI generation timed out. Please try again with 10 questions for a faster test.");
+    throw error;
+  } finally {
+    clearTimeout(timeoutId);
+  }
 
   const raw = await response.text();
   if (!response.ok) {
@@ -283,18 +294,16 @@ async function handleGenerate(request, env) {
     performance: body?.performance
   });
 
-  // Two attempts give the model a chance to replace accidental duplicates.
-  for (let attempt = 0; attempt < 2; attempt++) {
-    try {
-      const generated = await generateWithGemini(prompt, env);
-      const questions = uniqueQuestions(generated?.questions || []);
-      if (questions.length >= count) return json({ questions: questions.slice(0, count), model: MODEL }, 200, env);
-    } catch (error) {
-      if (attempt === 1) return json({ error: error.message || "AI generation failed." }, 502, env);
-    }
+  // One validated generation keeps the UI responsive. If the model returns duplicates
+  // or an incomplete set, the user can retry instead of waiting through a second call.
+  try {
+    const generated = await generateWithGemini(prompt, env);
+    const questions = uniqueQuestions(generated?.questions || []);
+    if (questions.length >= count) return json({ questions: questions.slice(0, count), model: MODEL }, 200, env);
+    return json({ error: "The AI returned duplicate or incomplete questions. Please generate the test again." }, 502, env);
+  } catch (error) {
+    return json({ error: error.message || "AI generation failed." }, 502, env);
   }
-
-  return json({ error: "The AI returned duplicate or incomplete questions. Please generate the test again." }, 502, env);
 }
 
 export default {
