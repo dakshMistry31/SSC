@@ -151,6 +151,32 @@
         .modal-overlay.active .modal-body { transform: translateY(0); }
         .ai-modal-content { scrollbar-gutter: stable; }
 
+        /* Typing Test */
+        .typing-layout { display:grid; grid-template-columns:minmax(0,1fr) 320px; gap:1.5rem; }
+        .typing-card { background:var(--bg-card); border:1px solid var(--border-color); border-radius:var(--radius-lg); padding:1.5rem; box-shadow:var(--shadow-sm); }
+        .typing-modes { display:grid; grid-template-columns:repeat(3,1fr); gap:.75rem; margin-bottom:1.25rem; }
+        .typing-mode-btn { border:1px solid var(--border-color); border-radius:var(--radius-md); padding:.8rem .75rem; color:var(--text-main); background:var(--bg-body); font-weight:700; transition:var(--transition); }
+        .typing-mode-btn:hover,.typing-mode-btn.active { border-color:var(--primary); background:var(--primary-light); color:var(--primary); }
+        .typing-stats { display:grid; grid-template-columns:repeat(3,1fr); gap:.75rem; margin-bottom:1rem; }
+        .typing-stat { padding:.85rem; border:1px solid var(--border-color); border-radius:var(--radius-md); background:var(--bg-body); text-align:center; }
+        .typing-stat-value { font-size:1.45rem; font-weight:800; }
+        .typing-stat-label { font-size:.72rem; color:var(--text-muted); text-transform:uppercase; font-weight:700; margin-top:.15rem; }
+        .typing-timer { font-size:2rem; font-weight:800; color:var(--primary); text-align:center; margin:.25rem 0 1rem; }
+        .typing-passage { border:1px solid var(--border-color); border-radius:var(--radius-md); padding:1rem; min-height:150px; line-height:1.8; font-size:1.05rem; user-select:none; background:var(--bg-body); margin-bottom:1rem; }
+        .typing-passage .typed-correct { color:var(--success); }
+        .typing-passage .typed-wrong { color:var(--danger); background:var(--danger-light); border-radius:2px; }
+        .typing-passage .current-char { background:var(--primary); color:white; border-radius:2px; box-shadow:0 0 0 2px rgba(79,70,229,.15); }
+        .typing-input { width:100%; min-height:120px; resize:vertical; padding:1rem; border:1px solid var(--border-color); border-radius:var(--radius-md); background:var(--bg-card); color:var(--text-main); line-height:1.6; }
+        .typing-input:focus { border-color:var(--primary); outline:none; box-shadow:0 0 0 3px rgba(79,70,229,.12); }
+        .typing-record { display:flex; justify-content:space-between; gap:.75rem; align-items:center; padding:.75rem 0; border-bottom:1px solid var(--border-color); }
+        .typing-record:last-child { border-bottom:0; }
+        .record-label { color:var(--text-muted); font-size:.9rem; }
+        .record-value { font-size:1.15rem; font-weight:800; }
+        .typing-live-record { padding:.75rem 1rem; border-radius:var(--radius-md); background:var(--success-light); color:var(--success); font-size:.875rem; margin-bottom:1rem; display:none; }
+        .typing-controls { display:flex; gap:.75rem; flex-wrap:wrap; }
+        @media(max-width:900px){ .typing-layout{grid-template-columns:1fr;} }
+        @media(max-width:600px){ .typing-card{padding:1rem;} .typing-modes{grid-template-columns:1fr;gap:.5rem;} .typing-stats{grid-template-columns:repeat(2,1fr);} .typing-passage{font-size:.98rem;min-height:130px;line-height:1.7;} .typing-controls .btn-primary{width:100% !important;} }
+
         @media (max-width: 900px) {
             .dashboard-grid, .quiz-shell { grid-template-columns: 1fr; }
             .sidebar { position: fixed; left: -260px; top: 0; bottom: 0; }
@@ -265,6 +291,7 @@
                 <li class="nav-item"><a href="#" class="nav-link" onclick="navigateTo('bookmarks')"><i class="fa-solid fa-bookmark"></i> Bookmarks</a></li>
                 <li class="nav-item"><a href="#" class="nav-link" onclick="navigateTo('profile')"><i class="fa-solid fa-user"></i> Profile</a></li>
                 <li class="nav-item"><a href="#" class="nav-link" onclick="openAiTestModal()"><i class="fa-solid fa-wand-magic-sparkles"></i> AI Test Lab</a></li>
+                <li class="nav-item"><a href="#" class="nav-link" onclick="navigateTo('typing-test')"><i class="fa-solid fa-keyboard"></i> Typing Test</a></li>
                 <li class="nav-item"><a href="#" class="nav-link" onclick="navigateTo('settings')"><i class="fa-solid fa-gear"></i> Settings</a></li>
                 <li class="nav-item" style="margin-top: 2rem;"><a href="#" class="nav-link" onclick="handleLogout()"><i class="fa-solid fa-right-from-bracket"></i> Logout</a></li>
             </ul>
@@ -512,6 +539,46 @@
                             </div>
                             <button type="submit" class="btn-primary">Save Profile</button>
                         </form>
+                    </div>
+                </section>
+
+                <section id="page-typing-test" class="page-view hidden">
+                    <div class="page-header">
+                        <h1 class="page-title">Typing Test</h1>
+                        <p class="page-subtitle">Improve your typing speed for SSC CHSL Tier-II. Your lifetime records are saved to your account.</p>
+                    </div>
+                    <div class="typing-layout">
+                        <div class="typing-card">
+                            <div class="card-header"><div><div class="card-title">Typing Practice</div><div class="page-subtitle">Standard WPM = correctly typed characters ÷ 5 ÷ minutes.</div></div></div>
+                            <div class="typing-modes" role="group" aria-label="Typing test duration">
+                                <button id="typing-mode-1" class="typing-mode-btn active" onclick="selectTypingDuration(1)">1 Minute</button>
+                                <button id="typing-mode-5" class="typing-mode-btn" onclick="selectTypingDuration(5)">5 Minutes</button>
+                                <button id="typing-mode-10" class="typing-mode-btn" onclick="selectTypingDuration(10)">10 Minutes</button>
+                            </div>
+                            <div class="typing-stats">
+                                <div class="typing-stat"><div id="typing-current-wpm" class="typing-stat-value">0</div><div class="typing-stat-label">Current WPM</div></div>
+                                <div class="typing-stat"><div id="typing-accuracy" class="typing-stat-value">100%</div><div class="typing-stat-label">Accuracy</div></div>
+                                <div class="typing-stat"><div id="typing-errors" class="typing-stat-value">0</div><div class="typing-stat-label">Errors</div></div>
+                            </div>
+                            <div id="typing-timer" class="typing-timer">01:00</div>
+                            <div id="typing-live-record" class="typing-live-record"></div>
+                            <div id="typing-passage" class="typing-passage" aria-label="Typing passage"></div>
+                            <textarea id="typing-input" class="typing-input" placeholder="Click here and start typing..." spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off" disabled></textarea>
+                            <div class="typing-controls" style="margin-top:1rem;">
+                                <button id="typing-start-btn" class="btn-primary" style="width:auto;" onclick="startTypingTest()"><i class="fa-solid fa-play"></i> Start Test</button>
+                                <button id="typing-reset-btn" class="btn-primary" style="width:auto;background:var(--text-muted);" onclick="resetTypingTest()"><i class="fa-solid fa-rotate-left"></i> Reset</button>
+                            </div>
+                            <div id="typing-result" class="ai-status hidden" style="margin-top:1rem;"></div>
+                        </div>
+                        <div class="typing-card">
+                            <div class="card-title" style="margin-bottom:.75rem;">Lifetime Records</div>
+                            <p class="page-subtitle" style="margin-bottom:1rem;">Your best WPM is updated the moment your live score crosses a previous record.</p>
+                            <div class="typing-record"><span class="record-label">1 Minute Record</span><span id="typing-record-1" class="record-value">0 WPM</span></div>
+                            <div class="typing-record"><span class="record-label">5 Minute Record</span><span id="typing-record-5" class="record-value">0 WPM</span></div>
+                            <div class="typing-record"><span class="record-label">10 Minute Record</span><span id="typing-record-10" class="record-value">0 WPM</span></div>
+                            <div class="typing-record"><span class="record-label">Tests Completed</span><span id="typing-tests-count" class="record-value">0</span></div>
+                            <div style="margin-top:1rem;padding:.75rem;border-radius:var(--radius-md);background:var(--primary-light);font-size:.82rem;color:var(--text-muted);">Records are tied to your Firebase account, so they remain available after logout or on another device.</div>
+                        </div>
                     </div>
                 </section>
 
@@ -1322,6 +1389,7 @@ async function loadFirebaseUser(firebaseUser) {
     streak: 1,
     lastActiveDate: new Date().toDateString(),
     topicProgress: {},
+    typingStats: { best1: 0, best5: 0, best10: 0, totalTests: 0 },
     quizHistory: [],
     bookmarks: [],
     weakTopics: [],
@@ -1344,6 +1412,14 @@ async function cloudSaveCurrentUser() {
     updatedAt: serverTimestamp()
   }, { merge: true });
 }
+
+// Expose cloud persistence to the typing test.
+window.cloudSaveCurrentUser = cloudSaveCurrentUser;
+window.saveTypingAttempt = async function(attempt) {
+  const uid = window.appState?.currentUser;
+  if (!uid || !auth.currentUser) return;
+  await addDoc(collection(db, 'users', uid, 'typingAttempts'), attempt);
+};
 
 // Make the existing global state accessible to this module.
 window.appState = appState;
@@ -1369,6 +1445,7 @@ window.handleRegister = async function(e) {
       totalTests: 0, totalQuestions: 0, correctAnswers: 0,
       streak: 0, lastActiveDate: null,
       activityByDate: {},
+      typingStats: { best1: 0, best5: 0, best10: 0, totalTests: 0 },
       topicProgress: {}, quizHistory: [], bookmarks: [], weakTopics: [], aiRecentQuestions: []
     };
     await setDoc(doc(db, 'users', cred.user.uid), {
@@ -1501,10 +1578,13 @@ window.showAppShell = function() {
     if (emailEl) emailEl.value = u.email || '';
     if (nameEl) nameEl.value = u.name || '';
     if (postEl) postEl.value = u.targetPost || 'LDC';
+    u.typingStats = u.typingStats || { best1: 0, best5: 0, best10: 0, totalTests: 0 };
+    if (typeof updateTypingRecordsUI === 'function') updateTypingRecordsUI();
   }
 };
 
-/* ==========================================================================
+/* ==========================================================================\n   TYPING TEST - SSC CHSL TIER-II\n   ========================================================================== */\nconst TYPING_PASSAGES=["The ability to type accurately and quickly is an important skill for computer based examinations. Regular practice improves speed, accuracy, confidence, and familiarity with the keyboard.","Time management is essential during competitive examinations. A calm approach, careful reading, and consistent practice can help candidates complete tasks accurately within the available time.","Government offices depend on accurate digital records and efficient communication. Good typing skills help staff enter information, prepare documents, and complete routine computer based work efficiently.","Daily practice is more useful than occasional long sessions. Focus on accuracy first, then gradually increase speed while maintaining correct spelling, punctuation, spacing, and rhythm.","A disciplined learner tracks progress, identifies repeated mistakes, and practices weak areas. Small improvements made consistently can produce a significant increase in typing performance over time."];\nlet typingState={duration:1,passage:'',started:false,finished:false,startTime:0,elapsedMs:0,timerId:null,lastWpm:0,correctChars:0,errors:0};\nfunction getTypingStats(){const u=appState.users[appState.currentUser];if(!u)return{best1:0,best5:0,best10:0,totalTests:0};u.typingStats=u.typingStats||{best1:0,best5:0,best10:0,totalTests:0};const t=u.typingStats;t.best1=Number(t.best1)||0;t.best5=Number(t.best5)||0;t.best10=Number(t.best10)||0;t.totalTests=Number(t.totalTests)||0;return t;}\nfunction updateTypingRecordsUI(){const t=getTypingStats();const a=document.getElementById('typing-record-1'),b=document.getElementById('typing-record-5'),c=document.getElementById('typing-record-10'),d=document.getElementById('typing-tests-count');if(a)a.textContent=`${t.best1} WPM`;if(b)b.textContent=`${t.best5} WPM`;if(c)c.textContent=`${t.best10} WPM`;if(d)d.textContent=String(t.totalTests);}\nfunction formatTypingTime(seconds){const s=Math.max(0,Math.ceil(seconds)),m=Math.floor(s/60),sec=s%60;return`${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;}\nfunction selectTypingDuration(minutes){if(typingState.started&&!typingState.finished)return;typingState.duration=minutes;[1,5,10].forEach(m=>document.getElementById(`typing-mode-${m}`)?.classList.toggle('active',m===minutes));resetTypingTest(false);}\nfunction newTypingPassage(){const shuffled=[...TYPING_PASSAGES].sort(()=>Math.random()-.5);let text='';while(text.length<2200)text+=(text?' ':'')+shuffled[Math.floor(Math.random()*shuffled.length)];return text;}\nfunction renderTypingPassage(){const el=document.getElementById('typing-passage');if(!el)return;const typed=document.getElementById('typing-input')?.value||'';el.innerHTML=[...typingState.passage].map((ch,i)=>{const cls=i<typed.length?(typed[i]===ch?'typed-correct':'typed-wrong'):(i===typed.length?'current-char':'');const safe=ch===' '?'&nbsp;':ch.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');return`<span class="${cls}">${safe}</span>`;}).join('');}\nfunction calculateTypingMetrics(){const input=document.getElementById('typing-input')?.value||'',elapsedMinutes=Math.max((typingState.elapsedMs||0)/60000,1/60);let correct=0,errors=0;for(let i=0;i<input.length;i++){if(input[i]===typingState.passage[i])correct++;else errors++;}return{input,correct,errors,wpm:Math.max(0,Math.round((correct/5)/elapsedMinutes)),accuracy:input.length?Math.round(correct/input.length*100):100};}\nlet typingRecordSaveTimer=null;
+async function persistTypingRecordIfNeeded(wpm){const u=appState.users[appState.currentUser];if(!u)return;const t=getTypingStats(),key=typingState.duration===1?'best1':typingState.duration===5?'best5':'best10';if(wpm>t[key]){t[key]=wpm;updateTypingRecordsUI();const live=document.getElementById('typing-live-record');if(live){live.textContent=`New lifetime record! ${wpm} WPM (${typingState.duration}-minute test)`;live.style.display='block';}clearTimeout(typingRecordSaveTimer);typingRecordSaveTimer=setTimeout(()=>{if(window.cloudSaveCurrentUser)window.cloudSaveCurrentUser().catch(e=>console.warn('Typing record save failed:',e));},1200);}}}\nfunction updateTypingLiveMetrics(){if(!typingState.started||typingState.finished)return;typingState.elapsedMs=Math.min(Date.now()-typingState.startTime,typingState.duration*60000);const m=calculateTypingMetrics();typingState.lastWpm=m.wpm;typingState.correctChars=m.correct;typingState.errors=m.errors;document.getElementById('typing-current-wpm').textContent=m.wpm;document.getElementById('typing-accuracy').textContent=`${m.accuracy}%`;document.getElementById('typing-errors').textContent=m.errors;document.getElementById('typing-timer').textContent=formatTypingTime((typingState.duration*60000-typingState.elapsedMs)/1000);persistTypingRecordIfNeeded(m.wpm);if(typingState.elapsedMs>=typingState.duration*60000)finishTypingTest();}\nfunction startTypingTest(){if(typingState.started&&!typingState.finished)return;clearInterval(typingState.timerId);typingState.passage=newTypingPassage();typingState.started=true;typingState.finished=false;typingState.elapsedMs=0;typingState.startTime=Date.now();typingState.lastWpm=0;typingState.correctChars=0;typingState.errors=0;const input=document.getElementById('typing-input');input.value='';input.disabled=false;input.focus();document.getElementById('typing-result')?.classList.add('hidden');document.getElementById('typing-live-record').style.display='none';document.getElementById('typing-start-btn').innerHTML='<i class="fa-solid fa-keyboard"></i> Test Running…';document.getElementById('typing-start-btn').disabled=true;renderTypingPassage();typingState.timerId=setInterval(updateTypingLiveMetrics,250);updateTypingLiveMetrics();}\nasync function finishTypingTest(){if(!typingState.started||typingState.finished)return;typingState.finished=true;clearInterval(typingState.timerId);typingState.elapsedMs=typingState.duration*60000;const m=calculateTypingMetrics(),t=getTypingStats(),key=typingState.duration===1?'best1':typingState.duration===5?'best5':'best10';const newRecord=m.wpm>t[key];if(newRecord)t[key]=m.wpm;t.totalTests++;updateTypingRecordsUI();document.getElementById('typing-input').disabled=true;document.getElementById('typing-start-btn').disabled=false;document.getElementById('typing-start-btn').innerHTML='<i class="fa-solid fa-play"></i> Start New Test';document.getElementById('typing-timer').textContent='00:00';document.getElementById('typing-current-wpm').textContent=m.wpm;document.getElementById('typing-accuracy').textContent=`${m.accuracy}%`;document.getElementById('typing-errors').textContent=m.errors;renderTypingPassage();const result=document.getElementById('typing-result');result.classList.remove('hidden');result.textContent=`${m.wpm} WPM • ${m.accuracy}% accuracy • ${m.correct} correct characters • ${m.errors} errors${newRecord?' • New lifetime record!':''}`;result.style.background=newRecord?'var(--success-light)':'var(--primary-light)';result.style.color=newRecord?'var(--success)':'var(--text-main)';if(window.cloudSaveCurrentUser){try{await window.cloudSaveCurrentUser();}catch(e){console.warn('Typing stats save failed:',e);}}try{if(window.saveTypingAttempt)await window.saveTypingAttempt({durationMinutes:typingState.duration,wpm:m.wpm,accuracy:m.accuracy,correctCharacters:m.correct,errors:m.errors,completedAt:new Date().toISOString()});}catch(e){console.warn('Typing attempt history save failed:',e);}}\nfunction resetTypingTest(randomize=true){clearInterval(typingState.timerId);typingState.started=false;typingState.finished=false;typingState.elapsedMs=0;typingState.startTime=0;typingState.lastWpm=0;typingState.correctChars=0;typingState.errors=0;if(randomize||!typingState.passage)typingState.passage=newTypingPassage();const input=document.getElementById('typing-input');if(input){input.value='';input.disabled=true;}const btn=document.getElementById('typing-start-btn');if(btn){btn.disabled=false;btn.innerHTML='<i class="fa-solid fa-play"></i> Start Test';}document.getElementById('typing-timer').textContent=formatTypingTime(typingState.duration*60);document.getElementById('typing-current-wpm').textContent='0';document.getElementById('typing-accuracy').textContent='100%';document.getElementById('typing-errors').textContent='0';document.getElementById('typing-live-record').style.display='none';document.getElementById('typing-result')?.classList.add('hidden');renderTypingPassage();updateTypingRecordsUI();}\nconst typingInputEl=document.getElementById('typing-input');if(typingInputEl)typingInputEl.addEventListener('input',()=>{if(!typingState.started||typingState.finished)return;if(typingInputEl.value.length>typingState.passage.length)typingInputEl.value=typingInputEl.value.slice(0,typingState.passage.length);updateTypingLiveMetrics();renderTypingPassage();});\nconst originalNavigateToForTyping=window.navigateTo||navigateTo;window.navigateTo=function(pageId){if(pageId!=='typing-test'&&typingState.started&&!typingState.finished){clearInterval(typingState.timerId);typingState.started=false;typingState.finished=false;}originalNavigateToForTyping(pageId);if(pageId==='typing-test'){getTypingStats();updateTypingRecordsUI();if(!typingState.passage)resetTypingTest();}};\nwindow.selectTypingDuration=selectTypingDuration;window.startTypingTest=startTypingTest;window.finishTypingTest=finishTypingTest;window.resetTypingTest=resetTypingTest;\n\n/* ==========================================================================
    PHASE 3 - AI TEST ENGINE
    The browser never stores the Gemini API key. It sends the Firebase ID token
    to a separate AI backend, which verifies the user and calls Gemini.
