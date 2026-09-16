@@ -145,10 +145,11 @@
         .palette-btn.answered { background: var(--success); color: white; border-color: var(--success); }
         .palette-btn.review { background: var(--warning); color: white; border-color: var(--warning); }
 
-        .modal-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.5); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 100; opacity: 0; pointer-events: none; transition: var(--transition); }
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.5); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 100; opacity: 0; pointer-events: none; transition: var(--transition); padding: 1rem; overflow-y: auto; overscroll-behavior: contain; }
         .modal-overlay.active { opacity: 1; pointer-events: auto; }
-        .modal-body { background: var(--bg-card); width: 90%; max-width: 500px; border-radius: var(--radius-lg); padding: 2rem; box-shadow: var(--shadow-lg); transform: translateY(20px); transition: var(--transition); }
+        .modal-body { background: var(--bg-card); width: min(620px, 100%); max-width: 620px; max-height: calc(100dvh - 2rem); overflow-y: auto; -webkit-overflow-scrolling: touch; border-radius: var(--radius-lg); padding: 2rem; box-shadow: var(--shadow-lg); transform: translateY(20px); transition: var(--transition); margin: auto; }
         .modal-overlay.active .modal-body { transform: translateY(0); }
+        .ai-modal-content { scrollbar-gutter: stable; }
 
         @media (max-width: 900px) {
             .dashboard-grid, .quiz-shell { grid-template-columns: 1fr; }
@@ -164,7 +165,17 @@
         .ai-form-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:1rem; }
         .ai-status { padding:.75rem 1rem; border-radius:var(--radius-md); background:var(--primary-light); color:var(--text-main); font-size:.875rem; }
         .ai-loading { display:flex; align-items:center; gap:.65rem; color:var(--text-muted); }
-        @media(max-width:700px){ .ai-form-grid{grid-template-columns:1fr;} }
+        @media(max-width:700px){
+            .ai-form-grid{grid-template-columns:1fr; gap:.75rem;}
+            .modal-overlay{align-items:flex-start; padding:.75rem; padding-top:max(.75rem, env(safe-area-inset-top)); padding-bottom:max(.75rem, env(safe-area-inset-bottom));}
+            .modal-body.ai-modal-content{width:100%; max-width:none; max-height:calc(100dvh - 1.5rem); padding:1rem; border-radius:14px; margin:0 auto;}
+            .ai-modal-content .card-header{gap:.75rem; align-items:flex-start;}
+            .ai-modal-content .card-title{font-size:1rem;}
+            .ai-modal-content .page-subtitle{font-size:.78rem; line-height:1.35;}
+            .ai-modal-content .form-group{margin-bottom:.5rem;}
+            .ai-modal-content .form-input{min-height:44px;}
+            #ai-generate-btn{position:sticky; bottom:0; z-index:2; margin-top:.25rem; box-shadow:0 -8px 18px rgba(0,0,0,.08);}
+        }
     </style>
 </head>
 <body>
@@ -1556,21 +1567,33 @@ async function requestAiQuestions({tier, subjectId, subjectName, topic, difficul
   if (!window.firebaseAuth?.currentUser) throw new Error('Please sign in before generating an AI test.');
   const token = await window.firebaseAuth.currentUser.getIdToken();
   const user = appState.users[appState.currentUser] || {};
-  const avoidQuestions = Array.isArray(user.aiRecentQuestions) ? user.aiRecentQuestions.slice(-20) : [];
-  const response = await fetch(window.CHSL_AI_API_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-    body: JSON.stringify({
-      tier, subjectId, subject: subjectName, topic, difficulty, count: Math.min(Math.max(Number(count) || 20, 10), 20),
-      mode,
-      avoidQuestions,
-      performance: {
-        weakTopics: Array.isArray(user.weakTopics) ? user.weakTopics.slice(-15) : [],
-        topicProgress: Object.fromEntries(Object.entries(user.topicProgress || {}).slice(-20)),
-        overallAccuracy: user.totalQuestions ? Math.round(((user.correctAnswers || 0) / user.totalQuestions) * 100) : null
-      }
-    })
-  });
+  const requestedCount = Math.min(Math.max(Number(count) || 20, 10), 20);
+  const avoidQuestions = Array.isArray(user.aiRecentQuestions) ? user.aiRecentQuestions.slice(-12) : [];
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 75000);
+  let response;
+  try {
+    response = await fetch(window.CHSL_AI_API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      signal: controller.signal,
+      body: JSON.stringify({
+        tier, subjectId, subject: subjectName, topic, difficulty, count: requestedCount,
+        mode,
+        avoidQuestions,
+        performance: {
+          weakTopics: Array.isArray(user.weakTopics) ? user.weakTopics.slice(-10) : [],
+          topicProgress: Object.fromEntries(Object.entries(user.topicProgress || {}).slice(-12)),
+          overallAccuracy: user.totalQuestions ? Math.round(((user.correctAnswers || 0) / user.totalQuestions) * 100) : null
+        }
+      })
+    });
+  } catch (error) {
+    if (error?.name === 'AbortError') throw new Error('AI generation took too long. Please try again; 10 questions will usually generate faster.');
+    throw error;
+  } finally {
+    clearTimeout(timeoutId);
+  }
   let data = null;
   try { data = await response.json(); } catch (_) {}
   if (!response.ok) throw new Error(data?.error || `AI service returned ${response.status}.`);
@@ -1593,11 +1616,15 @@ async function requestAiQuestions({tier, subjectId, subjectName, topic, difficul
     seen.add(key);
     return true;
   });
-  if (unique.length < Math.min(Number(count) || 20, 20)) throw new Error('AI returned duplicate questions. Please generate again.');
-  return unique.slice(0, Math.min(Number(count) || 20, 20));
+  if (unique.length < requestedCount) throw new Error('AI returned duplicate questions. Please generate again.');
+  return unique.slice(0, requestedCount);
 }
 
+let aiGenerationInProgress = false;
+
 async function launchAiQuiz({tier, subjectId, subjectName, topic, difficulty='Medium', count=20, mode='topic'}) {
+  if (aiGenerationInProgress) return false;
+  aiGenerationInProgress = true;
   const btn = document.getElementById('ai-generate-btn');
   if (btn) { btn.disabled = true; btn.innerHTML = '<span class="ai-loading"><i class="fa-solid fa-spinner fa-spin"></i> Generating…</span>'; }
   try {
@@ -1621,6 +1648,7 @@ async function launchAiQuiz({tier, subjectId, subjectName, topic, difficulty='Me
     aiStatus(error.message || 'AI test generation failed.', 'error');
     return false;
   } finally {
+    aiGenerationInProgress = false;
     if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles"></i> Generate Test'; }
   }
 }
