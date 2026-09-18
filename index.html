@@ -1747,7 +1747,6 @@ window.resetUserProgress = async function() {
 };
 
 // Firebase is the source of truth for session restoration.
-window.addEventListener('load', () => {
   onAuthStateChanged(auth, async (firebaseUser) => {
     const loadingScreen = document.getElementById('auth-loading-screen');
 
@@ -1780,23 +1779,6 @@ window.addEventListener('load', () => {
             loadingScreen.classList.add('hidden');
         }
     }
-});
-    if (!firebaseUser) {
-      appState.currentUser = null;
-      document.getElementById('app-shell').classList.add('hidden');
-      document.getElementById('auth-screen').classList.remove('hidden');
-      return;
-    }
-    try {
-      const user = await loadFirebaseUser(firebaseUser);
-      appState.users[firebaseUser.uid] = user;
-      appState.currentUser = firebaseUser.uid;
-      window.showAppShell();
-    } catch (err) {
-      console.error('Unable to load Firebase user:', err);
-      showAuthError('Unable to load your account data. Please refresh and try again.');
-    }
-  });
 });
 // Keep the profile page synchronized with the authenticated account.
 const originalShowAppShell = window.showAppShell || showAppShell;
