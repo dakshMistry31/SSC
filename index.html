@@ -11,6 +11,65 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <style>
+        .auth-loading-screen {
+    position: fixed;
+    inset: 0;
+    z-index: 99999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-main, #f8fafc);
+}
+
+.auth-loading-content {
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.auth-loading-logo {
+    width: 72px;
+    height: 72px;
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--primary, #4f46e5);
+    color: #fff;
+    font-size: 24px;
+    font-weight: 800;
+    margin-bottom: 18px;
+    box-shadow: 0 10px 30px rgba(79, 70, 229, 0.25);
+}
+
+.auth-loading-content h2 {
+    margin: 0 0 6px;
+    font-size: 24px;
+    font-weight: 800;
+    color: var(--text-main, #111827);
+}
+
+.auth-loading-content p {
+    margin: 0 0 20px;
+    color: var(--text-muted, #6b7280);
+    font-size: 14px;
+}
+
+.auth-loading-spinner {
+    width: 28px;
+    height: 28px;
+    border: 3px solid rgba(79, 70, 229, 0.18);
+    border-top-color: var(--primary, #4f46e5);
+    border-radius: 50%;
+    animation: authLoadingSpin 0.8s linear infinite;
+}
+
+@keyframes authLoadingSpin {
+    to {
+        transform: rotate(360deg);
+    }
+}
         :root {
             --primary: #4f46e5;
             --primary-hover: #4338ca;
@@ -218,7 +277,14 @@
     </style>
 </head>
 <body>
-
+<div id="auth-loading-screen" class="auth-loading-screen">
+    <div class="auth-loading-content">
+        <div class="auth-loading-logo">CM</div>
+        <h2>CHSL Mastery</h2>
+        <p>Checking your account...</p>
+        <div class="auth-loading-spinner"></div>
+    </div>
+</div>
     <div id="auth-screen" class="auth-container">
         <div class="auth-card">
             <div class="auth-header">
@@ -1683,6 +1749,38 @@ window.resetUserProgress = async function() {
 // Firebase is the source of truth for session restoration.
 window.addEventListener('load', () => {
   onAuthStateChanged(auth, async (firebaseUser) => {
+    const loadingScreen = document.getElementById('auth-loading-screen');
+
+    if (!firebaseUser) {
+        appState.currentUser = null;
+        document.getElementById('app-shell').classList.add('hidden');
+        document.getElementById('auth-screen').classList.remove('hidden');
+
+        if (loadingScreen) {
+            loadingScreen.classList.add('hidden');
+        }
+
+        return;
+    }
+
+    try {
+        const user = await loadFirebaseUser(firebaseUser);
+        appState.users[firebaseUser.uid] = user;
+        appState.currentUser = firebaseUser.uid;
+        window.showAppShell();
+
+        if (loadingScreen) {
+            loadingScreen.classList.add('hidden');
+        }
+    } catch (err) {
+        console.error('Unable to load Firebase user:', err);
+        showAuthError('Unable to load your account data. Please refresh and try again.');
+
+        if (loadingScreen) {
+            loadingScreen.classList.add('hidden');
+        }
+    }
+});
     if (!firebaseUser) {
       appState.currentUser = null;
       document.getElementById('app-shell').classList.add('hidden');
